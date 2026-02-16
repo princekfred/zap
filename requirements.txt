@@ -1,0 +1,6 @@
+numpy>=1.24
+scipy>=1.10
+pennylane>=0.35
+pennylane-lightning>=0.35
+pyscf>=2.3
+

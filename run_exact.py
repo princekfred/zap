@@ -140,6 +140,13 @@ def main():
             state_idx=args.state_idx,
             r1r2_outfile=None if args.skip_files else "out_r1_r2.txt",
         )
+        if isinstance(out, dict) and "eigenvalues" in out:
+            eigvals = out["eigenvalues"]
+            if len(eigvals) > 0:
+                print("\nGround energy:", float(eigvals[0]))
+                print("Lowest excitation energies:", list(out["excitation_energies"][:10]))
+        else:
+            print("QSC-EOM finished.")
 
 if __name__ == "__main__":
     main()
