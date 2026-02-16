@@ -97,7 +97,7 @@ def gs_exact(
     method="pyscf",
     shots=None,
     max_iter=100,
-    opt_method="BFGS",
+    opt_method="Powell",
     amplitudes_outfile="t1_t2.txt",
 ):
     """Optimize a non‑Trotterized UCCSD ansatz using dense matrices.
@@ -152,7 +152,7 @@ def gs_exact(
 
     h_mat = np.asarray(qml.matrix(H, wire_order=wire_order), dtype=complex)
 
-    dev = qml.device("default.qubit", wires=n_qubits)
+    dev = qml.device("lightning.qubit", wires=n_qubits)
 
     @qml.qnode(dev)
     def _hf_statevector():
