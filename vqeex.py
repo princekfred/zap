@@ -93,6 +93,7 @@ def gs_exact(
     active_electrons,
     active_orbitals,
     charge,
+    basis="sto-3g",
     method="pyscf",
     shots=None,
     max_iter=100,
@@ -139,7 +140,7 @@ def gs_exact(
     H, n_qubits = qml.qchem.molecular_hamiltonian(
         symbols,
         geometry,
-        basis="sto-3g",
+        basis=basis,
         method=method,
         active_electrons=active_electrons,
         active_orbitals=active_orbitals,

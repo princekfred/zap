@@ -124,6 +124,7 @@ def ee_exact(
     charge,
     params,
     shots=0,
+    basis="sto-3g",
     method="pyscf",
     state_idx=1,
     r1r2_outfile="out_r1_r2.txt",
@@ -155,7 +156,7 @@ def ee_exact(
     hamiltonian, qubits = qml.qchem.molecular_hamiltonian(
         symbols,
         geometry,
-        basis="sto-3g",
+        basis=basis,
         method=method,
         active_electrons=active_electrons,
         active_orbitals=active_orbitals,

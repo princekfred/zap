@@ -140,16 +140,4 @@ def run_scf(
     }
 
 
-if __name__ == "__main__":
-    import numpy as np
-
-    symbols = ["H", "H", "H", "H"]
-    geometry = np.array(
-        [
-            [0.0, 0.0, 0.0],
-            [0.0, 0.0, 3.0],
-            [0.0, 0.0, 6.0],
-            [0.0, 0.0, 9.0],
-        ]
-    )
-    run_scf(symbols, geometry, charge=0, unit="Angstrom")
+  
