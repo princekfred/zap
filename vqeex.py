@@ -96,8 +96,8 @@ def gs_exact(
     basis="sto-3g",
     method="pyscf",
     shots=None,
-    max_iter=100,
-    opt_method="Powell",
+    max_iter=500,
+    opt_method="BFGS",
     amplitudes_outfile="t1_t2.txt",
 ):
     """Optimize a non‑Trotterized UCCSD ansatz using dense matrices.

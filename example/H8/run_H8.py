@@ -31,17 +31,23 @@ def _as_array(coords):
 
 def _default_problem():
     r = 1.88973
-    symbols = ["N", "N"]
+    symbols = ["H", "H", "H", "H", "H", "H", "H", "H"]
     coords = [
-        [0.0, 0.0, 0.40 * r],
-        [0.0, 0.0, -0.5488 * r],
+        [0.0, 0.0, 0.0 * r],
+        [0.0, 0.0, 2 * r],
+        [0.0, 0.0, 4 * r],
+        [0.0, 0.0, 6 * r],
+        [0.0, 0.0, 8 * r],
+        [0.0, 0.0, 10 * r],
+        [0.0, 0.0, 12 * r],
+        [0.0, 0.0, 14 * r],
     ]
     return {
         "symbols": symbols,
         "geometry": _as_array(coords),
         # Keep a small active space for exact dense-matrix VQE tractability.
-        "active_electrons": 6,
-        "active_orbitals": 6,
+        "active_electrons": 4,
+        "active_orbitals": 4,
         "charge": 0,
     }
 
