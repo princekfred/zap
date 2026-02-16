@@ -30,10 +30,11 @@ def _as_array(coords):
 
 
 def _default_problem():
+    r = 1.88973
     symbols = ["N", "N"]
     coords = [
-        [0.0, 0.0, 0.51],
-        [0.0, 0.0, -0.5488],
+        [0.0, 0.0, 0.51 * r],
+        [0.0, 0.0, -0.5488 * r],
     ]
     return {
         "symbols": symbols,
@@ -91,7 +92,7 @@ def _parse_args():
 
 def main():
     args = _parse_args()
-    cfg = _default_problem(args.bond_length_bohr)
+    cfg = _default_problem()
 
     run_scf = args.mode in {"all", "scf"}
     run_vqe = args.mode in {"all", "vqe", "qsceom"}
@@ -103,7 +104,7 @@ def main():
             cfg["symbols"],
             cfg["geometry"],
             charge=cfg["charge"],
-            unit="Angstrom",
+            unit="bohr",
             basis="sto-6g",
             fock_output=None if args.skip_files else "fock.txt",
             two_e_output=None if args.skip_files else "two_elec.txt",
