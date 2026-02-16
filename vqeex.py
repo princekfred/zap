@@ -97,6 +97,7 @@ def gs_exact(
     shots=None,
     max_iter=100,
     opt_method="BFGS",
+    amplitudes_outfile="t1_t2.txt",
 ):
     """Optimize a non‑Trotterized UCCSD ansatz using dense matrices.
 
@@ -245,9 +246,20 @@ def gs_exact(
     t1 = params[:n_s]
     t2 = params[n_s:]
 
+    amp_lines = []
+    amp_lines.append("Operator\tAmplitude")
+    amp_lines.append("++++++++++++++++++++++++++++++")
     for (i, j, a, b), amp in zip(doubles, t2):
-        print(f"{a}^ {b}^ {i} {j} \t| {amp}")
+        line = f"{a}^ {b}^ {i} {j} \t| {amp}"
+        print(line)
+        amp_lines.append(line)
     for (i, a), amp in zip(singles, t1):
-        print(f"{a}^ {i} \t| {amp}")
-    
+        line = f"{a}^ {i} \t| {amp}"
+        print(line)
+        amp_lines.append(line)
+
+    if amplitudes_outfile:
+        with open(amplitudes_outfile, "w", encoding="utf-8") as f:
+            f.write("\n".join(amp_lines) + "\n")
+
     return params

@@ -70,6 +70,7 @@ By default, the workflow writes:
 - `fock.txt`: SCF orbital summary
 - `two_elec.txt`: antisymmetrized two-electron MO spin-orbital integrals
 - `out_r1_r2.txt`: QSC-EOM `R1/R2` excitation coefficients
+- `t1_t2.txt`: optimized UCCSD amplitudes (`t2` then `t1`)
 
 These files are generated artifacts and are ignored by Git (`.gitignore`).
 
