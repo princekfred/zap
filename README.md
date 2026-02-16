@@ -74,18 +74,6 @@ By default, the workflow writes:
 
 These files are generated artifacts and are ignored by Git (`.gitignore`).
 
-## Default System
-
-`run_exact.py` is configured for an H4 chain with:
-
-- symbols: `["H", "H", "H", "H"]`
-- spacing scale: `r = 1.88973` (Bohr)
-- active electrons: `4`
-- active orbitals: `4`
-- charge: `0`
-
-You can edit `_default_problem()` in `run_exact.py` to change system setup.
-
 ## Notes and Limitations
 
 - `vqeex.py` uses dense matrices (`2**n x 2**n`), so it is only practical for
