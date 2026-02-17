@@ -29,17 +29,16 @@ def _as_array(coords):
         return np.array(coords, dtype=float)
 
 
-def _default_problem(bond_length_bohr):
-    half = 0.5 * float(bond_length_bohr)
+def _default_problem():
+    r = 1.88973
     symbols = ["C", "H"]
     coords = [
-        [0.0, 0.0, -half],
-        [0.0, 0.0, half],
+        [0.0, 0.0, 0.5 * r],
+        [0.0, 0.0, -0.5 * r],
     ]
     return {
         "symbols": symbols,
         "geometry": _as_array(coords),
-        "basis": "sto-3g",
         # Keep a compact active space for exact dense-matrix VQE tractability.
         "active_electrons": 4,
         "active_orbitals": 4,
@@ -57,12 +56,6 @@ def _parse_args():
         default="all",
         choices=["all", "scf", "vqe", "qsceom"],
         help="all: SCF + VQE + QSC-EOM, scf: SCF only, vqe: VQE only, qsceom: VQE+QSC-EOM",
-    )
-    parser.add_argument(
-        "--bond-length-bohr",
-        default=2.116,
-        type=float,
-        help="C-H distance in Bohr.",
     )
     parser.add_argument(
         "--method",
@@ -98,7 +91,7 @@ def _parse_args():
 
 def main():
     args = _parse_args()
-    cfg = _default_problem(args.bond_length_bohr)
+    cfg = _default_problem()
 
     run_scf = args.mode in {"all", "scf"}
     run_vqe = args.mode in {"all", "vqe", "qsceom"}
@@ -110,8 +103,8 @@ def main():
             cfg["symbols"],
             cfg["geometry"],
             charge=cfg["charge"],
-            basis=cfg["basis"],
-            unit="Bohr",
+            basis="sto-3g",
+            unit="bohr",
             fock_output=None if args.skip_files else "fock.txt",
             two_e_output=None if args.skip_files else "two_elec.txt",
         )
@@ -131,7 +124,7 @@ def main():
             cfg["active_electrons"],
             cfg["active_orbitals"],
             cfg["charge"],
-            basis=cfg["basis"],
+            basis="sto-3g",
             method=args.method,
             max_iter=args.max_iter,
             amplitudes_outfile=None if args.skip_files else "t1_t2.txt",
@@ -151,7 +144,7 @@ def main():
             cfg["charge"],
             params,
             shots=args.shots,
-            basis=cfg["basis"],
+            basis="sto-3g",
             method=args.method,
             state_idx=args.state_idx,
             r1r2_outfile=None if args.skip_files else "out_r1_r2.txt",

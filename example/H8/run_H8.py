@@ -1,4 +1,4 @@
-"""Single entrypoint for SCF + exact VQE + QSC-EOM workflow for N2."""
+"""Single entrypoint for SCF + exact VQE + QSC-EOM workflow for H8."""
 
 import argparse
 import sys
@@ -46,15 +46,15 @@ def _default_problem():
         "symbols": symbols,
         "geometry": _as_array(coords),
         # Keep a small active space for exact dense-matrix VQE tractability.
-        "active_electrons": 4,
-        "active_orbitals": 4,
+        "active_electrons": 8,
+        "active_orbitals": 8,
         "charge": 0,
     }
 
 
 def _parse_args():
     parser = argparse.ArgumentParser(
-        description="Run exact chemistry pipeline for N2 from a single script."
+        description="Run exact chemistry pipeline for H8 from a single script."
     )
     parser.add_argument(
         "mode",
@@ -111,7 +111,7 @@ def main():
             cfg["geometry"],
             charge=cfg["charge"],
             unit="bohr",
-            basis="sto-6g",
+            basis="sto-3g",
             fock_output=None if args.skip_files else "fock.txt",
             two_e_output=None if args.skip_files else "two_elec.txt",
         )
@@ -133,7 +133,7 @@ def main():
             cfg["charge"],
             method=args.method,
             max_iter=args.max_iter,
-            basis="sto-6g",
+            basis="sto-3g",
             amplitudes_outfile=None if args.skip_files else "t1_t2.txt",
         )
         print("Returned parameter vector length:", len(params))
@@ -153,7 +153,7 @@ def main():
             shots=args.shots,
             method=args.method,
             state_idx=args.state_idx,
-            basis="sto-6g",
+            basis="sto-3g",
             r1r2_outfile=None if args.skip_files else "out_r1_r2.txt",
         )
     
