@@ -20,3 +20,7 @@ fock.txt
 two_elec.txt
 out_r1_r2.txt
 t1_t2.txt
+example/**/fock.txt
+example/**/two_elec.txt
+example/**/out_r1_r2.txt
+example/**/t1_t2.txt

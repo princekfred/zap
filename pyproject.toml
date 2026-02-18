@@ -24,5 +24,13 @@ dependencies = [
 run-exact = "run_exact:main"
 
 [tool.setuptools]
-py-modules = ["run_exact", "vqeex", "qsceom", "SCF", "exc", "fun"]
+py-modules = ["run_exact", "vqe", "qsceom", "SCF", "exc", "fun"]
 
+[project.optional-dependencies]
+dev = [
+  "ruff>=0.6",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"

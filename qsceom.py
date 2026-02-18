@@ -103,6 +103,11 @@ def ee_exact(
     eig = eig[idx]
     evec = evec[:, idx]
 
+    if state_idx < 0 or state_idx >= len(eig):
+        raise ValueError(
+            f"`state_idx` must be between 0 and {len(eig) - 1}, got {state_idx}."
+        )
+
     hf_state = np.array(range(active_electrons))
     vector = evec[:, state_idx]
 

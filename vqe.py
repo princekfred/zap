@@ -1,8 +1,5 @@
 """VQE helpers (PennyLane)."""
 
-import warnings
-warnings.filterwarnings("ignore", category=UserWarning)
-
 def gs_exact(
     symbols,
     geometry,
@@ -19,8 +16,6 @@ def gs_exact(
 
     Returns the optimized parameter vector.
     """
-    import time
-
     try:
         import pennylane as qml
         from pennylane import numpy as np
@@ -85,9 +80,10 @@ def gs_exact(
         qml.UCCSD(params, wires, s_wires, d_wires, hf_state)
         return qml.expval(H)
 
-    optimizer = qml.GradientDescentOptimizer(stepsize=0.5)
+    if max_iter < 1:
+        raise ValueError("`max_iter` must be >= 1")
 
-    t0 = time.time()
+    optimizer = qml.GradientDescentOptimizer(stepsize=0.5)
     energy = None
     for _ in range(max_iter):
         params, energy = optimizer.step_and_cost(

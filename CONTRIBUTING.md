@@ -20,8 +20,9 @@ python -m pip install -r requirements.txt
 ## Basic Checks
 
 ```bash
-python -m py_compile run_exact.py SCF.py vqeex.py qsceom.py exc.py fun.py
+python -m py_compile run_exact.py SCF.py vqe.py qsceom.py exc.py fun.py
 python run_exact.py --help
+ruff check .
 ```
 
 ## Pull Requests
@@ -29,4 +30,3 @@ python run_exact.py --help
 - Keep changes focused and well-scoped.
 - Include a short summary of scientific/algorithmic impact.
 - Add or update documentation when behavior changes.
-

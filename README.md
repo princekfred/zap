@@ -1,28 +1,23 @@
 # Exact UCCSD + QSC-EOM (PennyLane/PySCF)
 
-This repository contains a small quantum chemistry workflow for:
-
-- SCF orbital analysis with PySCF
-- exact (non-Trotterized) UCCSD VQE
-- QSC-EOM excited-state analysis with `R1/R2` coefficient output
-
-The main entrypoint is `run_exact.py`.
+Reference implementation of:
+- RHF orbital analysis with PySCF
+- UCCSD VQE ground-state optimization with PennyLane
+- QSC-EOM excited-state analysis with `R1/R2` coefficient export
 
 ## Repository Layout
 
-- `run_exact.py`: single CLI entrypoint for the full workflow
-- `vqeex.py`: exact UCCSD VQE optimizer (dense matrix exponential)
-- `qsceom.py`: QSC-EOM matrix build and `R1/R2` export
+- `run_exact.py`: canonical CLI entrypoint
 - `SCF.py`: RHF + orbital/two-electron integral report generation
-- `exc.py`: determinant list generator used by QSC-EOM
-- `fun.py`: optional compatibility import helper
+- `vqe.py`: UCCSD VQE optimizer
+- `qsceom.py`: QSC-EOM matrix build + `R1/R2` export
+- `exc.py`: determinant/excitation configuration generator
+- `example/*/run_*.py`: per-system runnable examples (H4, H8, N2, CH-)
 
 ## Requirements
 
-- Python 3.10+ recommended
-- Dependencies listed in `requirements.txt`
-
-Install:
+- Python 3.10+
+- Dependencies from `requirements.txt`
 
 ```bash
 python -m venv .venv
@@ -31,7 +26,7 @@ python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
-Optional editable install with console script:
+Optional editable install:
 
 ```bash
 python -m pip install -e .
@@ -40,13 +35,13 @@ run-exact --help
 
 ## Quick Start
 
-Run full pipeline (SCF + VQE + QSC-EOM):
+Run the full H4 pipeline:
 
 ```bash
 python run_exact.py
 ```
 
-Run selected stages:
+Run individual stages:
 
 ```bash
 python run_exact.py scf
@@ -54,11 +49,20 @@ python run_exact.py vqe
 python run_exact.py qsceom
 ```
 
-Useful options:
+Choose preset systems:
 
 ```bash
-python run_exact.py qsceom --state-idx 1
+python run_exact.py all --system h4
+python run_exact.py all --system h8
+python run_exact.py all --system n2
+python run_exact.py all --system ch-
+```
+
+Other common options:
+
+```bash
 python run_exact.py all --max-iter 700
+python run_exact.py qsceom --state-idx 1
 python run_exact.py all --skip-files
 python run_exact.py all --method pyscf
 ```
@@ -66,28 +70,18 @@ python run_exact.py all --method pyscf
 ## Outputs
 
 By default, the workflow writes:
-
 - `fock.txt`: SCF orbital summary
-- `two_elec.txt`: antisymmetrized two-electron MO spin-orbital integrals
+- `two_elec.txt`: antisymmetrized two-electron spin-orbital integrals
+- `t1_t2.txt`: optimized UCCSD amplitudes
 - `out_r1_r2.txt`: QSC-EOM `R1/R2` excitation coefficients
-- `t1_t2.txt`: optimized UCCSD amplitudes (`t2` then `t1`)
 
-These files are generated artifacts and are ignored by Git (`.gitignore`).
+## Development
 
-## Notes and Limitations
-
-- `vqeex.py` uses dense matrices (`2**n x 2**n`), so it is only practical for
-  small active spaces.
-- `shots` is accepted in CLI for compatibility, but QSC-EOM currently uses
-  exact statevector evaluation.
-- Numerical degeneracies can change eigenvector basis choices; `qsceom.py`
-  includes deterministic phase/symmetry handling for stable `R1/R2` output.
+```bash
+python -m py_compile run_exact.py SCF.py vqe.py qsceom.py exc.py fun.py
+python run_exact.py --help
+```
 
 ## License
 
-This project is released under the MIT License. See `LICENSE`.
-
-## CI
-
-A GitHub Actions workflow is included at `.github/workflows/ci.yml` for
-dependency install, syntax checks, and a CLI smoke test.
+MIT. See `LICENSE`.

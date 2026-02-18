@@ -1,16 +1,15 @@
-"""Single entrypoint for SCF + exact VQE + QSC-EOM workflow."""
+"""Project CLI entrypoint for SCF + exact VQE + QSC-EOM workflows."""
+
+from __future__ import annotations
 
 import argparse
-import sys
-from pathlib import Path
-
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+from typing import Any
 
 import SCF
 import qsceom
 import vqe
+
+BOHR_PER_ANGSTROM = 1.88973
 
 
 def _as_array(coords):
@@ -29,27 +28,65 @@ def _as_array(coords):
         return np.array(coords, dtype=float)
 
 
-def _default_problem():
-    r = 1.88973
-    symbols = ["H", "H", "H", "H"]
-    coords = [
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 3.0 * r],
-        [0.0, 0.0, 6.0 * r],
-        [0.0, 0.0, 9.0 * r],
-    ]
-    return {
-        "symbols": symbols,
-        "geometry": _as_array(coords),
-        "active_electrons": 4,
-        "active_orbitals": 4,
-        "charge": 0,
+def _problem(system: str) -> dict[str, Any]:
+    r = BOHR_PER_ANGSTROM
+    systems = {
+        "h4": {
+            "symbols": ["H", "H", "H", "H"],
+            "geometry": _as_array(
+                [
+                    [0.0, 0.0, 0.0],
+                    [0.0, 0.0, 3.0 * r],
+                    [0.0, 0.0, 6.0 * r],
+                    [0.0, 0.0, 9.0 * r],
+                ]
+            ),
+            "active_electrons": 4,
+            "active_orbitals": 4,
+            "charge": 0,
+            "basis": "sto-3g",
+        },
+        "h8": {
+            "symbols": ["H", "H", "H", "H", "H", "H", "H", "H"],
+            "geometry": _as_array([[0.0, 0.0, 2 * i * r] for i in range(8)]),
+            "active_electrons": 8,
+            "active_orbitals": 8,
+            "charge": 0,
+            "basis": "sto-3g",
+        },
+        "n2": {
+            "symbols": ["N", "N"],
+            "geometry": _as_array(
+                [
+                    [0.0, 0.0, 0.40 * r],
+                    [0.0, 0.0, -0.5488 * r],
+                ]
+            ),
+            "active_electrons": 6,
+            "active_orbitals": 6,
+            "charge": 0,
+            "basis": "sto-6g",
+        },
+        "ch-": {
+            "symbols": ["C", "H"],
+            "geometry": _as_array(
+                [
+                    [0.0, 0.0, 0.5 * r],
+                    [0.0, 0.0, -0.5 * r],
+                ]
+            ),
+            "active_electrons": 4,
+            "active_orbitals": 4,
+            "charge": -1,
+            "basis": "sto-3g",
+        },
     }
+    return systems[system]
 
 
 def _parse_args():
     parser = argparse.ArgumentParser(
-        description="Run exact chemistry pipeline from a single script."
+        description="Run exact chemistry workflow from a single CLI."
     )
     parser.add_argument(
         "mode",
@@ -59,10 +96,16 @@ def _parse_args():
         help="all: SCF + VQE + QSC-EOM, scf: SCF only, vqe: VQE only, qsceom: VQE+QSC-EOM",
     )
     parser.add_argument(
+        "--system",
+        default="h4",
+        choices=["h4", "h8", "n2", "ch-"],
+        help="Molecule/system preset.",
+    )
+    parser.add_argument(
         "--method",
         default="pyscf",
         choices=["pyscf", "dhf"],
-        help="Backend used by PennyLane molecular Hamiltonian builders.",
+        help="Backend for PennyLane molecular Hamiltonian builders.",
     )
     parser.add_argument(
         "--max-iter",
@@ -74,7 +117,7 @@ def _parse_args():
         "--shots",
         default=0,
         type=int,
-        help="QSC-EOM shots (kept for compatibility; exact routine ignores nonzero).",
+        help="QSC-EOM shots (0 means analytic expectation values).",
     )
     parser.add_argument(
         "--state-idx",
@@ -85,14 +128,14 @@ def _parse_args():
     parser.add_argument(
         "--skip-files",
         action="store_true",
-        help="Do not write fock/two-electron/R1R2 output files.",
+        help="Do not write fock/two-electron/t1_t2/R1R2 output files.",
     )
     return parser.parse_args()
 
 
-def main():
+def main() -> None:
     args = _parse_args()
-    cfg = _default_problem()
+    cfg = _problem(args.system)
 
     run_scf = args.mode in {"all", "scf"}
     run_vqe = args.mode in {"all", "vqe", "qsceom"}
@@ -105,6 +148,7 @@ def main():
             cfg["geometry"],
             charge=cfg["charge"],
             unit="bohr",
+            basis=cfg["basis"],
             fock_output=None if args.skip_files else "fock.txt",
             two_e_output=None if args.skip_files else "two_elec.txt",
         )
@@ -125,6 +169,7 @@ def main():
             cfg["active_orbitals"],
             cfg["charge"],
             method=args.method,
+            basis=cfg["basis"],
             max_iter=args.max_iter,
             amplitudes_outfile=None if args.skip_files else "t1_t2.txt",
         )
@@ -144,9 +189,11 @@ def main():
             params,
             shots=args.shots,
             method=args.method,
+            basis=cfg["basis"],
             state_idx=args.state_idx,
             r1r2_outfile=None if args.skip_files else "out_r1_r2.txt",
         )
+
 
 if __name__ == "__main__":
     main()
