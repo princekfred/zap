@@ -12,17 +12,6 @@ def _occ_to_index(occ, n_qubits, wire0_is_msb):
     return idx
 
 
-def _format_coeff(x):
-    try:
-        xr = float(x.real)
-        xi = float(x.imag)
-    except AttributeError:
-        return str(x)
-    if abs(xi) < 1e-10:
-        return str(xr)
-    return str(complex(xr, xi))
-
-
 def ee_exact(
     symbols,
     geometry,
@@ -114,12 +103,29 @@ def ee_exact(
         det_vectors[_occ_to_index(occ, qubits, wire0_is_msb), j] = 1.0
 
     psi = u_mat @ det_vectors
-    m_mat = psi.conj().T @ h_mat @ psi
-    m_mat = 0.5 * (m_mat + m_mat.conj().T)
+    h_psi = h_mat @ psi
 
-    eig, evec = np.linalg.eigh(m_mat)
-    idx = np.argsort(eig.real)
-    eig = eig[idx].real
+    # Mirror the original QSC-EOM extraction path:
+    # diagonal from individual expectation values and off-diagonal from
+    # superposition expectations.
+    diag = np.zeros(n_det, dtype=float)
+    for i in range(n_det):
+        diag[i] = float(np.real(np.vdot(psi[:, i], h_psi[:, i])))
+
+    m_mat = np.zeros((n_det, n_det), dtype=complex)
+    for i in range(n_det):
+        m_mat[i, i] = diag[i]
+    for i in range(n_det):
+        for j in range(n_det):
+            if i == j:
+                continue
+            plus = (psi[:, i] + psi[:, j]) / np.sqrt(2.0)
+            mtmp = float(np.real(np.vdot(plus, h_mat @ plus)))
+            m_mat[i, j] = mtmp - diag[i] / 2.0 - diag[j] / 2.0
+
+    eig, evec = np.linalg.eig(m_mat)
+    idx = np.argsort(eig)
+    eig = eig[idx]
     evec = evec[:, idx]
 
     if state_idx < 0 or state_idx >= len(eig):
@@ -128,9 +134,6 @@ def ee_exact(
         )
 
     vector = evec[:, state_idx]
-    pivot = int(np.argmax(np.abs(vector)))
-    if abs(vector[pivot]) > 0:
-        vector = vector / (vector[pivot] / abs(vector[pivot]))
 
     hf_state = list(range(active_electrons))
     if r1r2_outfile:
@@ -141,7 +144,7 @@ def ee_exact(
             particles = [virt for virt in det if virt not in hf_state]
             labels = [f"{p}^ {h}" for p, h in zip(particles, holes)]
             label = "; ".join(labels) if labels else "reference"
-            lines.append(f"{label}\t| {_format_coeff(coeff)}")
+            lines.append(f"{label}\t| {complex(coeff)}")
         with open(r1r2_outfile, "w", encoding="utf-8") as f:
             f.write("\n".join(lines))
             f.write("\n")
