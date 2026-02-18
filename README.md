@@ -1,4 +1,4 @@
-# Exact UCCSD + QSC-EOM (PennyLane/PySCF)
+# UCCSD + QSC-EOM (PennyLane/PySCF)
 
 Reference implementation of:
 - RHF orbital analysis with PySCF
