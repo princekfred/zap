@@ -12,7 +12,7 @@ import SCF
 import qsceom_exact
 import vqee
 
-OUTPUT_DIR = Path(__file__).resolve().parent
+OUTPUT_DIR = PROJECT_ROOT / "Outputs" / "H4_exact"
 
 
 def _as_array(coords):
@@ -99,6 +99,9 @@ def main():
     run_scf = args.mode in {"all", "scf"}
     run_vqe = args.mode in {"all", "vqe", "vqee", "qsceom"}
     run_qsceom = args.mode in {"all", "qsceom"}
+
+    if not args.skip_files:
+        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     fock_file = None if args.skip_files else str(OUTPUT_DIR / "fock_exact.txt")
     two_e_file = None if args.skip_files else str(OUTPUT_DIR / "two_elec_exact.txt")

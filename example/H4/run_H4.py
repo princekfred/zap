@@ -12,6 +12,8 @@ import SCF
 import qsceom
 import vqe
 
+OUTPUT_DIR = PROJECT_ROOT / "Outputs" / "H4_trotterized"
+
 
 def _as_array(coords):
     try:
@@ -98,6 +100,14 @@ def main():
     run_vqe = args.mode in {"all", "vqe", "qsceom"}
     run_qsceom = args.mode in {"all", "qsceom"}
 
+    if not args.skip_files:
+        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    fock_file = None if args.skip_files else str(OUTPUT_DIR / "fock.txt")
+    two_e_file = None if args.skip_files else str(OUTPUT_DIR / "two_elec.txt")
+    amp_file = None if args.skip_files else str(OUTPUT_DIR / "t1_t2.txt")
+    r1r2_file = None if args.skip_files else str(OUTPUT_DIR / "out_r1_r2.txt")
+
     if run_scf:
         print("\n[1/3] Running SCF...")
         scf_result = SCF.run_scf(
@@ -105,8 +115,8 @@ def main():
             cfg["geometry"],
             charge=cfg["charge"],
             unit="bohr",
-            fock_output=None if args.skip_files else "fock.txt",
-            two_e_output=None if args.skip_files else "two_elec.txt",
+            fock_output=fock_file,
+            two_e_output=two_e_file,
         )
         print(
             "SCF completed. Orbitals:",
@@ -126,7 +136,7 @@ def main():
             cfg["charge"],
             method=args.method,
             max_iter=args.max_iter,
-            amplitudes_outfile=None if args.skip_files else "t1_t2.txt",
+            amplitudes_outfile=amp_file,
         )
         print("Returned parameter vector length:", len(params))
 
@@ -145,7 +155,7 @@ def main():
             shots=args.shots,
             method=args.method,
             state_idx=args.state_idx,
-            r1r2_outfile=None if args.skip_files else "out_r1_r2.txt",
+            r1r2_outfile=r1r2_file,
         )
 
 if __name__ == "__main__":
