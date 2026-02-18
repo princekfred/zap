@@ -10,7 +10,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 import SCF
 import qsceom
-import vqeex
+import vqe
 
 
 def _as_array(coords):
@@ -125,7 +125,7 @@ def main():
     params = None
     if run_vqe:
         print("\n[2/3] Running exact VQE...")
-        params = vqeex.gs_exact(
+        params = vqe.gs_exact(
             cfg["symbols"],
             cfg["geometry"],
             cfg["active_electrons"],
