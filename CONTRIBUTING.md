@@ -16,6 +16,7 @@ python -m pip install -r requirements.txt
   - singles: `p^ h`
   - doubles: `p^ h; p^ h`
 - Generated outputs (`fock.txt`, `two_elec.txt`, `out_r1_r2.txt`) should not be committed.
+- Follow `CODE_OF_CONDUCT.md` in all interactions.
 
 ## Basic Checks
 
@@ -30,3 +31,4 @@ ruff check .
 - Keep changes focused and well-scoped.
 - Include a short summary of scientific/algorithmic impact.
 - Add or update documentation when behavior changes.
+- Use the PR checklist in `.github/pull_request_template.md`.

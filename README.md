@@ -82,6 +82,14 @@ python -m py_compile run_exact.py SCF.py vqe.py qsceom.py exc.py fun.py
 python run_exact.py --help
 ```
 
+## Community and GitHub Standards
+
+- Contributions: `CONTRIBUTING.md`
+- Code of conduct: `CODE_OF_CONDUCT.md`
+- Security policy: `SECURITY.md`
+- Pull request template: `.github/pull_request_template.md`
+- Issue templates: `.github/ISSUE_TEMPLATE/`
+
 ## License
 
 MIT. See `LICENSE`.
