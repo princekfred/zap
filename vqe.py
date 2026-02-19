@@ -13,7 +13,7 @@ def gs_exact(
     amplitudes_outfile=None,
 ):
     """Run a UCCSD-VQE ground-state calculation and print results.
-    # his 
+
     Returns the optimized parameter vector.
     """
     try:
