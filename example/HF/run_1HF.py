@@ -37,16 +37,18 @@ def _default_problem():
         [0.0, 0.0, 0.0],
         [0.0, 0.0, 0.793766],  # 1.5 bohr in angstroms
     ]
-    frozen_orbitals = 1
-    total_electrons = 10
-    total_spatial_orbitals = 11
+    #frozen_orbitals = 1
+    #total_electrons = 10
+    #total_spatial_orbitals = 11
     return {
         "symbols": symbols,
         "geometry": _as_array(coords),
         # Freeze only the lowest-energy molecular orbital (one doubly occupied MO).
-        "active_electrons": total_electrons - 2 * frozen_orbitals,
-        "active_orbitals": total_spatial_orbitals - frozen_orbitals,
+        "active_electrons": 6,
+        "active_orbitals": 6,
         "charge": 0,
+        "basis": "6-31g",
+        "unit": "angstrom",
     }
 
 
@@ -88,7 +90,7 @@ def _parse_args():
     parser.add_argument(
         "--skip-files",
         action="store_true",
-        help="Do not write fock/two-electron/R1R2 output files.",
+        help="Do not write fock/two-electron/R1R2/QSC-EOM-energy output files.",
     )
     return parser.parse_args()
 
@@ -108,6 +110,7 @@ def main():
     two_e_file = None if args.skip_files else str(OUTPUT_DIR / "1two_elec.txt")
     amp_file = None if args.skip_files else str(OUTPUT_DIR / "1t1_t2.txt")
     r1r2_file = None if args.skip_files else str(OUTPUT_DIR / "1out_r1_r2.txt")
+    qscex_ene_file = None if args.skip_files else str(OUTPUT_DIR / "1qscex_ene")
 
     if run_scf:
         print("\n[1/3] Running SCF...")
@@ -115,8 +118,8 @@ def main():
             cfg["symbols"],
             cfg["geometry"],
             charge=cfg["charge"],
-            unit="angstrom",
-            basis="6-31g",
+            unit=cfg["unit"],
+            basis=cfg["basis"],
             fock_output=fock_file,
             two_e_output=two_e_file,
         )
@@ -137,8 +140,8 @@ def main():
             cfg["active_orbitals"],
             cfg["charge"],
             method=args.method,
-            basis="6-31g",
-            unit="angstrom",
+            basis=cfg["basis"],
+            unit=cfg["unit"],
             max_iter=args.max_iter,
             amplitudes_outfile=amp_file,
         )
@@ -149,7 +152,7 @@ def main():
             raise RuntimeError("QSC-EOM requested without optimized parameters.")
 
         print("\n[3/3] Running QSC-EOM...")
-        qsceom.ee_exact(
+        eig = qsceom.ee_exact(
             cfg["symbols"],
             cfg["geometry"],
             cfg["active_electrons"],
@@ -158,11 +161,17 @@ def main():
             params,
             shots=args.shots,
             method=args.method,
-            basis="6-31g",
-            unit="angstrom",
+            basis=cfg["basis"],
+            unit=cfg["unit"],
             state_idx=args.state_idx,
             r1r2_outfile=r1r2_file,
         )
+        print("QSC-EOM energies (Hartree):", eig)
+
+        if qscex_ene_file:
+            with open(qscex_ene_file, "w", encoding="utf-8") as f:
+                for value in eig:
+                    f.write(f"{float(value)}\n")
 
 
 if __name__ == "__main__":

@@ -37,15 +37,15 @@ def _default_problem():
         [0.0, 0.0, 0.0],
         [0.0, 0.0, 0.793766],  # 1.5 bohr in angstroms
     ]
-    frozen_orbitals = 1
-    total_electrons = 10
-    total_spatial_orbitals = 11
+    #frozen_orbitals = 1
+    #total_electrons = 10
+    #total_spatial_orbitals = 11
     return {
         "symbols": symbols,
         "geometry": _as_array(coords),
         # Freeze only the lowest-energy molecular orbital (one doubly occupied MO).
-        "active_electrons": total_electrons - 2 * frozen_orbitals,
-        "active_orbitals": total_spatial_orbitals - frozen_orbitals,
+        "active_electrons": 6,
+        "active_orbitals": 6,
         "charge": 0,
     }
 
