@@ -1,4 +1,11 @@
+Basis set: sto-3g
+Geometry (angstrom):
+  H  0.0000000000  0.0000000000  0.0000000000
+  H  0.0000000000  0.0000000000  3.0000000000
+  H  0.0000000000  0.0000000000  6.0000000000
+  H  0.0000000000  0.0000000000  9.0000000000
+
 Number of spatial orbitals: 4
 Number of occupied orbitals: 2
 Number of virtual orbitals: 2
-SCF Orbital energies (Hartree): [-0.19029124 -0.17161995  0.00790137  0.02786331]
+SCF Orbital energies (Hartree): [-0.19029166 -0.17162019  0.00790156  0.02786371]

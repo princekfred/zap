@@ -119,7 +119,17 @@ def _single_print_key(ex):
     return (i // 2, a // 2, i % 2, a, i)
 
 
-def _print_amplitudes(*, singles, doubles, params, amplitudes_outfile=None):
+def _print_amplitudes(
+    *,
+    singles,
+    doubles,
+    params,
+    active_electrons=None,
+    active_orbitals=None,
+    hf_energy=None,
+    energy_min=None,
+    amplitudes_outfile=None,
+):
     """Print parameters in the expected `a^ b^ i j` / `a^ i` notation and order."""
     import numpy as np
 
@@ -151,6 +161,21 @@ def _print_amplitudes(*, singles, doubles, params, amplitudes_outfile=None):
 
     if amplitudes_outfile:
         with open(amplitudes_outfile, "w", encoding="utf-8") as f:
+            if active_electrons is not None:
+                f.write(f"Active electrons: {int(active_electrons)}\n")
+            if active_orbitals is not None:
+                f.write(f"Active orbitals: {int(active_orbitals)}\n")
+            if hf_energy is not None:
+                f.write(f"HF energy: {float(hf_energy)}\n")
+            if energy_min is not None:
+                f.write(f"Energy minimum: {float(energy_min)}\n")
+            if (
+                active_electrons is not None
+                or active_orbitals is not None
+                or hf_energy is not None
+                or energy_min is not None
+            ):
+                f.write("\n")
             f.write("Operator\tAmplitude\n")
             f.write("++++++++++++++++++++++++++++++\n")
             f.write("\n".join(lines))
@@ -168,6 +193,7 @@ def gs_exact(
     opt_method="BFGS",
     method="pyscf",
     basis="sto-3g",
+    unit="bohr",
     amplitudes_outfile=None,
 ):
     """Optimize a non‑Trotterized UCCSD ansatz using dense matrices.
@@ -213,6 +239,7 @@ def gs_exact(
             geometry,
             basis=basis,
             method=method,
+            unit=unit,
             active_electrons=active_electrons,
             active_orbitals=active_orbitals,
             charge=charge,
@@ -295,6 +322,10 @@ def gs_exact(
         singles=singles,
         doubles=doubles,
         params=params,
+        active_electrons=active_electrons,
+        active_orbitals=active_orbitals,
+        hf_energy=hf_e,
+        energy_min=e_min,
         amplitudes_outfile=amplitudes_outfile,
     )
 

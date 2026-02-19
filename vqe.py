@@ -8,6 +8,7 @@ def gs_exact(
     charge,
     method="pyscf",
     basis="sto-3g",
+    unit="bohr",
     shots=None,
     max_iter=100,
     amplitudes_outfile=None,
@@ -38,6 +39,7 @@ def gs_exact(
             geometry,
             basis=basis,
             method=method,
+            unit=unit,
             active_electrons=active_electrons,
             active_orbitals=active_orbitals,
             charge=charge,
@@ -64,7 +66,8 @@ def gs_exact(
         qml.BasisState(hf_state, wires=range(qubits))
         return qml.expval(H)
 
-    print("HF energy:", hf_energy())
+    hf_e = hf_energy()
+    print("HF energy:", hf_e)
 
     # Excitations and wires
     singles, doubles = qml.qchem.excitations(active_electrons, qubits)
@@ -95,8 +98,9 @@ def gs_exact(
             hf_state=hf_state,
         )
 
+    e_min = energy
     print("\nOptimal parameters:\n", list(params))
-    print("Energy minimum = ", energy)
+    print("Energy minimum = ", e_min)
 
     # Print amplitudes in exact excitation ordering (singles then doubles)
     print("\nPrinting amplitudes")
@@ -136,6 +140,11 @@ def gs_exact(
 
     if amplitudes_outfile:
         with open(amplitudes_outfile, "w", encoding="utf-8") as f:
+            f.write(f"Active electrons: {int(active_electrons)}\n")
+            f.write(f"Active orbitals: {int(active_orbitals)}\n")
+            f.write(f"HF energy: {float(hf_e)}\n")
+            f.write(f"Energy minimum: {float(e_min)}\n")
+            f.write("\n")
             f.write("Operator\tAmplitude\n")
             f.write("++++++++++++++++++++++++++++++\n")
             f.write("\n".join(amp_lines))

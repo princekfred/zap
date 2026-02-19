@@ -32,13 +32,13 @@ def _as_array(coords):
 
 
 def _default_problem():
-    r = 1.88973
+    bond_length_angstrom = 3.0
     symbols = ["H", "H", "H", "H"]
     coords = [
         [0.0, 0.0, 0.0],
-        [0.0, 0.0, 3.0 * r],
-        [0.0, 0.0, 6.0 * r],
-        [0.0, 0.0, 9.0 * r],
+        [0.0, 0.0, 1.0 * bond_length_angstrom],
+        [0.0, 0.0, 2.0 * bond_length_angstrom],
+        [0.0, 0.0, 3.0 * bond_length_angstrom],
     ]
     return {
         "symbols": symbols,
@@ -114,7 +114,7 @@ def main():
             cfg["symbols"],
             cfg["geometry"],
             charge=cfg["charge"],
-            unit="bohr",
+            unit="angstrom",
             fock_output=fock_file,
             two_e_output=two_e_file,
         )
@@ -135,6 +135,7 @@ def main():
             cfg["active_orbitals"],
             cfg["charge"],
             method=args.method,
+            unit="angstrom",
             max_iter=args.max_iter,
             amplitudes_outfile=amp_file,
         )
@@ -154,6 +155,7 @@ def main():
             params,
             shots=args.shots,
             method=args.method,
+            unit="angstrom",
             state_idx=args.state_idx,
             r1r2_outfile=r1r2_file,
         )

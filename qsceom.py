@@ -13,6 +13,7 @@ def ee_exact(
     shots=0,
     method="pyscf",
     basis="sto-3g",
+    unit="bohr",
     state_idx=1,
     r1r2_outfile="out_r1_r2.txt",
 ):
@@ -36,6 +37,7 @@ def ee_exact(
         geometry,
         basis=basis,
         method=method,
+        unit=unit,
         active_electrons=active_electrons,
         active_orbitals=active_orbitals,
         charge=charge,

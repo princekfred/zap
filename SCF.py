@@ -82,6 +82,13 @@ def run_scf(
 
     if fock_output:
         with open(fock_output, "w", encoding="utf-8") as f:
+            f.write(f"Basis set: {basis}\n")
+            f.write(f"Geometry ({unit}):\n")
+            for sym, xyz in zip(symbols, coords):
+                f.write(
+                    f"  {sym} {float(xyz[0]): .10f} {float(xyz[1]): .10f} {float(xyz[2]): .10f}\n"
+                )
+            f.write("\n")
             f.write(f"Number of spatial orbitals: {n_spatial_orbitals}\n")
             f.write(f"Number of occupied orbitals: {n_occ}\n")
             f.write(f"Number of virtual orbitals: {n_vir}\n")
