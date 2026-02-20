@@ -1,4 +1,4 @@
-"""Single entrypoint for SCF + exact VQE + QSC-EOM workflow for CH-."""
+"""Single entrypoint for CH+ SCF + exact VQE + QSC-EOM workflow."""
 
 import argparse
 import sys
@@ -11,6 +11,8 @@ if str(PROJECT_ROOT) not in sys.path:
 import SCF
 import qsceom
 import vqe
+
+OUTPUT_DIR = PROJECT_ROOT / "outputs" / "CH+_trotterized"
 
 
 def _as_array(coords):
@@ -30,25 +32,25 @@ def _as_array(coords):
 
 
 def _default_problem():
-    r = 1.88973
     symbols = ["C", "H"]
     coords = [
-        [0.0, 0.0, 0.5 * r],
-        [0.0, 0.0, -0.5 * r],
+        [0.0, 0.0, 0.0],
+        [0.0, 0.0, 2.0],
     ]
     return {
         "symbols": symbols,
         "geometry": _as_array(coords),
-        # Keep a compact active space for exact dense-matrix VQE tractability.
-        "active_electrons": 4,
-        "active_orbitals": 4,
-        "charge": -1,
+        "active_electrons": 6,
+        "active_orbitals": 6,
+        "charge": 1,
+        "basis": "6-31g",
+        "unit": "angstrom",
     }
 
 
 def _parse_args():
     parser = argparse.ArgumentParser(
-        description="Run exact chemistry pipeline for CH- from a single script."
+        description="Run CH+ chemistry pipeline from a single script."
     )
     parser.add_argument(
         "mode",
@@ -84,7 +86,7 @@ def _parse_args():
     parser.add_argument(
         "--skip-files",
         action="store_true",
-        help="Do not write fock/two-electron/R1R2 output files.",
+        help="Do not write fock/two-electron/R1R2/QSC-EOM-energy output files.",
     )
     return parser.parse_args()
 
@@ -97,16 +99,27 @@ def main():
     run_vqe = args.mode in {"all", "vqe", "qsceom"}
     run_qsceom = args.mode in {"all", "qsceom"}
 
+    if not args.skip_files:
+        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    fock_file = None if args.skip_files else str(OUTPUT_DIR / "fock.txt")
+    two_e_file = None if args.skip_files else str(OUTPUT_DIR / "two_elec.txt")
+    amp_file = None if args.skip_files else str(OUTPUT_DIR / "t1_t2.txt")
+    r1r2_file = None if args.skip_files else str(OUTPUT_DIR / "out_r1_r2.txt")
+    qscex_ene_file = None if args.skip_files else str(OUTPUT_DIR / "qscex_ene")
+
     if run_scf:
         print("\n[1/3] Running SCF...")
         scf_result = SCF.run_scf(
             cfg["symbols"],
             cfg["geometry"],
             charge=cfg["charge"],
-            basis="sto-3g",
-            unit="bohr",
-            fock_output=None if args.skip_files else "fock.txt",
-            two_e_output=None if args.skip_files else "two_elec.txt",
+            basis=cfg["basis"],
+            unit=cfg["unit"],
+            active_electrons=cfg["active_electrons"],
+            active_orbitals=cfg["active_orbitals"],
+            fock_output=fock_file,
+            two_e_output=two_e_file,
         )
         print(
             "SCF completed. Orbitals:",
@@ -124,10 +137,11 @@ def main():
             cfg["active_electrons"],
             cfg["active_orbitals"],
             cfg["charge"],
-            basis="sto-3g",
             method=args.method,
+            basis=cfg["basis"],
+            unit=cfg["unit"],
             max_iter=args.max_iter,
-            amplitudes_outfile=None if args.skip_files else "t1_t2.txt",
+            amplitudes_outfile=amp_file,
         )
         print("Returned parameter vector length:", len(params))
 
@@ -136,7 +150,7 @@ def main():
             raise RuntimeError("QSC-EOM requested without optimized parameters.")
 
         print("\n[3/3] Running QSC-EOM...")
-        qsceom.ee_exact(
+        eig = qsceom.ee_exact(
             cfg["symbols"],
             cfg["geometry"],
             cfg["active_electrons"],
@@ -144,11 +158,18 @@ def main():
             cfg["charge"],
             params,
             shots=args.shots,
-            basis="sto-3g",
             method=args.method,
+            basis=cfg["basis"],
+            unit=cfg["unit"],
             state_idx=args.state_idx,
-            r1r2_outfile=None if args.skip_files else "out_r1_r2.txt",
+            r1r2_outfile=r1r2_file,
         )
+        print("QSC-EOM energies (Hartree):", eig)
+
+        if qscex_ene_file:
+            with open(qscex_ene_file, "w", encoding="utf-8") as f:
+                for value in eig:
+                    f.write(f"{float(value)}\n")
 
 
 if __name__ == "__main__":

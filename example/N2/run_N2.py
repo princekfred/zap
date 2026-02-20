@@ -12,7 +12,7 @@ import SCF
 import qsceom
 import vqe
 
-OUTPUT_DIR = PROJECT_ROOT / "outputs" / "H4_trotterized"
+OUTPUT_DIR = PROJECT_ROOT / "outputs" / "N2_(6,6)"
 
 
 def _as_array(coords):
@@ -32,21 +32,18 @@ def _as_array(coords):
 
 
 def _default_problem():
-    bond_length_angstrom = 3.0
-    symbols = ["H", "H", "H", "H"]
+    symbols = ["N", "N"]
     coords = [
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 1.0 * bond_length_angstrom],
-        [0.0, 0.0, 2.0 * bond_length_angstrom],
-        [0.0, 0.0, 3.0 * bond_length_angstrom],
+        [0.0, 0.0, -0.54884],
+        [0.0, 0.0, 0.54884],
     ]
     return {
         "symbols": symbols,
         "geometry": _as_array(coords),
-        "active_electrons": 4,
-        "active_orbitals": 4,
+        "active_electrons": 6,
+        "active_orbitals": 6,
         "charge": 0,
-        "basis": "sto-3g",
+        "basis": "6-31g",
         "unit": "angstrom",
     }
 
@@ -173,6 +170,7 @@ def main():
             with open(qscex_ene_file, "w", encoding="utf-8") as f:
                 for value in eig:
                     f.write(f"{float(value)}\n")
+
 
 if __name__ == "__main__":
     main()

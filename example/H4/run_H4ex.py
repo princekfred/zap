@@ -115,6 +115,8 @@ def main():
             cfg["geometry"],
             charge=cfg["charge"],
             unit="angstrom",
+            active_electrons=cfg["active_electrons"],
+            active_orbitals=cfg["active_orbitals"],
             fock_output=fock_file,
             two_e_output=two_e_file,
         )

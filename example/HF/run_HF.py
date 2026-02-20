@@ -1,4 +1,4 @@
-"""Single entrypoint for HF exact VQE (vqee) + exact QSC-EOM workflow."""
+"""Single entrypoint for SCF + exact VQE + QSC-EOM workflow for HF."""
 
 import argparse
 import sys
@@ -9,10 +9,10 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 import SCF
-import qsceom_exact
-import vqee
+import qsceom
+import vqe
 
-OUTPUT_DIR = PROJECT_ROOT / "outputs" / "HF_exact"
+OUTPUT_DIR = PROJECT_ROOT / "outputs" / "HF_trotterized"
 
 
 def _as_array(coords):
@@ -47,19 +47,21 @@ def _default_problem():
         "active_electrons": 6,
         "active_orbitals": 6,
         "charge": 0,
+        "basis": "6-31g",
+        "unit": "angstrom",
     }
 
 
 def _parse_args():
     parser = argparse.ArgumentParser(
-        description="Run HF exact workflow from a single script."
+        description="Run HF chemistry pipeline from a single script."
     )
     parser.add_argument(
         "mode",
         nargs="?",
         default="all",
-        choices=["all", "scf", "vqe", "vqee", "qsceom"],
-        help="all: SCF + vqee + exact QSC-EOM, scf: SCF only, vqe/vqee: exact VQE only, qsceom: VQE+QSC-EOM",
+        choices=["all", "scf", "vqe", "qsceom"],
+        help="all: SCF + VQE + QSC-EOM, scf: SCF only, vqe: VQE only, qsceom: VQE+QSC-EOM",
     )
     parser.add_argument(
         "--method",
@@ -77,7 +79,7 @@ def _parse_args():
         "--shots",
         default=0,
         type=int,
-        help="Accepted for compatibility (ignored by exact QSC-EOM).",
+        help="QSC-EOM shots (kept for compatibility; exact routine ignores nonzero).",
     )
     parser.add_argument(
         "--state-idx",
@@ -88,7 +90,7 @@ def _parse_args():
     parser.add_argument(
         "--skip-files",
         action="store_true",
-        help="Do not write fock/two-electron/R1R2 output files.",
+        help="Do not write fock/two-electron/R1R2/QSC-EOM-energy output files.",
     )
     return parser.parse_args()
 
@@ -98,16 +100,17 @@ def main():
     cfg = _default_problem()
 
     run_scf = args.mode in {"all", "scf"}
-    run_vqe = args.mode in {"all", "vqe", "vqee", "qsceom"}
+    run_vqe = args.mode in {"all", "vqe", "qsceom"}
     run_qsceom = args.mode in {"all", "qsceom"}
 
     if not args.skip_files:
         OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    fock_file = None if args.skip_files else str(OUTPUT_DIR / "1fock_exact.txt")
-    two_e_file = None if args.skip_files else str(OUTPUT_DIR / "1two_elec_exact.txt")
-    amp_file = None if args.skip_files else str(OUTPUT_DIR / "1t1_t2_exact.txt")
-    r1r2_file = None if args.skip_files else str(OUTPUT_DIR / "1out_r1_r2_exact.txt")
+    fock_file = None if args.skip_files else str(OUTPUT_DIR / "fock.txt")
+    two_e_file = None if args.skip_files else str(OUTPUT_DIR / "two_elec.txt")
+    amp_file = None if args.skip_files else str(OUTPUT_DIR / "t1_t2.txt")
+    r1r2_file = None if args.skip_files else str(OUTPUT_DIR / "out_r1_r2.txt")
+    qscex_ene_file = None if args.skip_files else str(OUTPUT_DIR / "qscex_ene.txt")
 
     if run_scf:
         print("\n[1/3] Running SCF...")
@@ -115,8 +118,10 @@ def main():
             cfg["symbols"],
             cfg["geometry"],
             charge=cfg["charge"],
-            unit="angstrom",
-            basis="6-31g",
+            unit=cfg["unit"],
+            basis=cfg["basis"],
+            active_electrons=cfg["active_electrons"],
+            active_orbitals=cfg["active_orbitals"],
             fock_output=fock_file,
             two_e_output=two_e_file,
         )
@@ -129,16 +134,16 @@ def main():
 
     params = None
     if run_vqe:
-        print("\n[2/3] Running exact VQE (vqee)...")
-        params = vqee.gs_exact(
+        print("\n[2/3] Running exact VQE...")
+        params = vqe.gs_exact(
             cfg["symbols"],
             cfg["geometry"],
             cfg["active_electrons"],
             cfg["active_orbitals"],
             cfg["charge"],
             method=args.method,
-            basis="6-31g",
-            unit="angstrom",
+            basis=cfg["basis"],
+            unit=cfg["unit"],
             max_iter=args.max_iter,
             amplitudes_outfile=amp_file,
         )
@@ -148,8 +153,8 @@ def main():
         if params is None:
             raise RuntimeError("QSC-EOM requested without optimized parameters.")
 
-        print("\n[3/3] Running exact QSC-EOM...")
-        qsceom_exact.ee_exact(
+        print("\n[3/3] Running QSC-EOM...")
+        eig = qsceom.ee_exact(
             cfg["symbols"],
             cfg["geometry"],
             cfg["active_electrons"],
@@ -158,11 +163,17 @@ def main():
             params,
             shots=args.shots,
             method=args.method,
-            basis="6-31g",
-            unit="angstrom",
+            basis=cfg["basis"],
+            unit=cfg["unit"],
             state_idx=args.state_idx,
             r1r2_outfile=r1r2_file,
         )
+        print("QSC-EOM energies (Hartree):", eig)
+
+        if qscex_ene_file:
+            with open(qscex_ene_file, "w", encoding="utf-8") as f:
+                for value in eig:
+                    f.write(f"{float(value)}\n")
 
 
 if __name__ == "__main__":
