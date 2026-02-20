@@ -12,7 +12,7 @@ import SCF
 import qsceom
 import vqe
 
-OUTPUT_DIR = PROJECT_ROOT / "outputs" / "HF_trotterized"
+OUTPUT_DIR = PROJECT_ROOT / "outputs" / "HF_1"
 
 
 def _as_array(coords):
