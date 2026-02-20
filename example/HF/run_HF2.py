@@ -1,4 +1,4 @@
-"""Single entrypoint for CH+ SCF + exact VQE + QSC-EOM workflow."""
+"""Single entrypoint for SCF + exact VQE + QSC-EOM workflow for HF."""
 
 import argparse
 import sys
@@ -12,7 +12,7 @@ import SCF
 import qsceom
 import vqe
 
-OUTPUT_DIR = PROJECT_ROOT / "outputs" / "CH+_trotterized"
+OUTPUT_DIR = PROJECT_ROOT / "outputs" / "HF_2"
 
 
 def _as_array(coords):
@@ -32,17 +32,19 @@ def _as_array(coords):
 
 
 def _default_problem():
-    symbols = ["C", "H"]
+    symbols = ["H", "F"]
     coords = [
         [0.0, 0.0, 0.0],
-        [0.0, 0.0, 1.12],
+        [0.0, 0.0, 2.0],  
     ]
+
     return {
         "symbols": symbols,
         "geometry": _as_array(coords),
-        "active_electrons": 4,
-        "active_orbitals": 4,
-        "charge": 1,
+        # Freeze only the lowest-energy molecular orbital (one doubly occupied MO).
+        "active_electrons": 6,
+        "active_orbitals": 6,
+        "charge": 0,
         "basis": "6-31g",
         "unit": "angstrom",
     }
@@ -50,7 +52,7 @@ def _default_problem():
 
 def _parse_args():
     parser = argparse.ArgumentParser(
-        description="Run CH+ chemistry pipeline from a single script."
+        description="Run HF chemistry pipeline from a single script."
     )
     parser.add_argument(
         "mode",
@@ -106,7 +108,7 @@ def main():
     two_e_file = None if args.skip_files else str(OUTPUT_DIR / "two_elec.txt")
     amp_file = None if args.skip_files else str(OUTPUT_DIR / "t1_t2.txt")
     r1r2_file = None if args.skip_files else str(OUTPUT_DIR / "out_r1_r2.txt")
-    qscex_ene_file = None if args.skip_files else str(OUTPUT_DIR / "qscex_ene")
+    qscex_ene_file = None if args.skip_files else str(OUTPUT_DIR / "qscex_ene.txt")
 
     if run_scf:
         print("\n[1/3] Running SCF...")
@@ -114,8 +116,8 @@ def main():
             cfg["symbols"],
             cfg["geometry"],
             charge=cfg["charge"],
-            basis=cfg["basis"],
             unit=cfg["unit"],
+            basis=cfg["basis"],
             active_electrons=cfg["active_electrons"],
             active_orbitals=cfg["active_orbitals"],
             fock_output=fock_file,
