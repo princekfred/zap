@@ -12,7 +12,7 @@ import SCF
 import qsceom
 import vqe
 
-OUTPUT_DIR = PROJECT_ROOT / "outputs" / "CH+"
+OUTPUT_DIR = PROJECT_ROOT / "outputs" / "CH+_trotterized"
 
 
 def _as_array(coords):
@@ -35,7 +35,7 @@ def _default_problem():
     symbols = ["C", "H"]
     coords = [
         [0.0, 0.0, 0.0],
-        [0.0, 0.0, 1.1285],
+        [0.0, 0.0, 1.12],
     ]
     return {
         "symbols": symbols,
