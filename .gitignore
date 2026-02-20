@@ -24,3 +24,9 @@ example/**/fock.txt
 example/**/two_elec.txt
 example/**/out_r1_r2.txt
 example/**/t1_t2.txt
+
+# Keep generated files in committed output snapshots
+!outputs/**/fock.txt
+!outputs/**/two_elec.txt
+!outputs/**/out_r1_r2.txt
+!outputs/**/t1_t2.txt
