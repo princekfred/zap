@@ -12,7 +12,7 @@ import SCF
 import qsceom
 import vqe
 
-OUTPUT_DIR = PROJECT_ROOT / "outputs" / "HF_2"
+OUTPUT_DIR = PROJECT_ROOT / "outputs" / "HF_0.793"
 
 
 def _as_array(coords):
@@ -35,9 +35,11 @@ def _default_problem():
     symbols = ["H", "F"]
     coords = [
         [0.0, 0.0, 0.0],
-        [0.0, 0.0, 2.0],  
+        [0.0, 0.0, 0.793766],  # 1.5 bohr in angstroms
     ]
-
+    #frozen_orbitals = 1
+    #total_electrons = 10
+    #total_spatial_orbitals = 11
     return {
         "symbols": symbols,
         "geometry": _as_array(coords),
@@ -81,7 +83,7 @@ def _parse_args():
     )
     parser.add_argument(
         "--state-idx",
-        default=1,
+        default=3,
         type=int,
         help="QSC-EOM eigenvector index used for R1/R2 output.",
     )

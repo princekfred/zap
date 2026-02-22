@@ -81,7 +81,7 @@ def _parse_args():
     )
     parser.add_argument(
         "--state-idx",
-        default=1,
+        default=3,
         type=int,
         help="QSC-EOM eigenvector index used for R1/R2 output.",
     )

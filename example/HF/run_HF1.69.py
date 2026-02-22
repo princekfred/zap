@@ -12,7 +12,7 @@ import SCF
 import qsceom
 import vqe
 
-OUTPUT_DIR = PROJECT_ROOT / "outputs" / "HF_1"
+OUTPUT_DIR = PROJECT_ROOT / "outputs" / "HF_1.69"
 
 
 def _as_array(coords):
@@ -35,17 +35,15 @@ def _default_problem():
     symbols = ["H", "F"]
     coords = [
         [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.793766],  # 1.5 bohr in angstroms
+        [0.0, 0.0, 1.69337],  # 3.2 bohr in angstroms
     ]
-    #frozen_orbitals = 1
-    #total_electrons = 10
-    #total_spatial_orbitals = 11
+
     return {
         "symbols": symbols,
         "geometry": _as_array(coords),
         # Freeze only the lowest-energy molecular orbital (one doubly occupied MO).
-        "active_electrons": 6,
-        "active_orbitals": 6,
+        "active_electrons": 8,
+        "active_orbitals": 10,
         "charge": 0,
         "basis": "6-31g",
         "unit": "angstrom",
@@ -83,7 +81,7 @@ def _parse_args():
     )
     parser.add_argument(
         "--state-idx",
-        default=1,
+        default=3,
         type=int,
         help="QSC-EOM eigenvector index used for R1/R2 output.",
     )
