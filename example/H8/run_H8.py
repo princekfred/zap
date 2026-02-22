@@ -12,7 +12,7 @@ import SCF
 import qsceom
 import vqe
 
-OUTPUT_DIR = PROJECT_ROOT / "outputs" / "HF_1"
+OUTPUT_DIR = PROJECT_ROOT / "outputs" / "H8"
 
 
 def _as_array(coords):
@@ -32,20 +32,24 @@ def _as_array(coords):
 
 
 def _default_problem():
-    symbols = ["H", "F"]
+    symbols = ["H", "H", "H", "H", "H", "H", "H", "H"]
     coords = [
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.793766],  # 1.5 bohr in angstroms
+        [-0.5292, 1.2775, 0.0],
+        [0.5292, 1.2775, 0.0],
+        [1.2775, 0.5292, 0.0],
+        [1.2775, -0.5292, 0.0],
+        [0.5292, -1.2775, 0.0],
+        [-0.5292, -1.2775, 0.0],
+        [-1.2775, -0.5292, 0.0],
+        [-1.2775, 0.5292, 0.0],
     ]
-    #frozen_orbitals = 1
-    #total_electrons = 10
-    #total_spatial_orbitals = 11
+
     return {
         "symbols": symbols,
         "geometry": _as_array(coords),
         # Freeze only the lowest-energy molecular orbital (one doubly occupied MO).
-        "active_electrons": 6,
-        "active_orbitals": 6,
+        "active_electrons": 8,
+        "active_orbitals": 8,
         "charge": 0,
         "basis": "6-31g",
         "unit": "angstrom",

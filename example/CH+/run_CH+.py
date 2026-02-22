@@ -15,6 +15,74 @@ import vqe
 OUTPUT_DIR = PROJECT_ROOT / "outputs" / "CH+"
 
 
+def _estimate_2_1_delta_state(cfg, eigvals, nroots_per_component=3, tol=1e-6):
+    """Estimate which QSC-EOM root corresponds to the 2^1Delta state.
+
+    The estimate is based on matching QSC-EOM energies to singlet E2 roots from a
+    symmetry-resolved CASCI reference in the same active space.
+    """
+    try:
+        import numpy as np
+        from pyscf import fci, gto, mcscf, scf
+    except Exception:
+        return None
+
+    mol = gto.Mole()
+    coords = [[cfg["symbols"][i], [float(x) for x in cfg["geometry"][i]]] for i in range(len(cfg["symbols"]))]
+    mol.atom = coords
+    mol.basis = cfg["basis"]
+    mol.charge = int(cfg["charge"])
+    mol.unit = cfg["unit"]
+    mol.symmetry = True
+    mol.build()
+
+    mf = scf.RHF(mol)
+    mf.max_cycle = 200
+    mf.conv_tol = 1e-9
+    mf.kernel()
+    if not mf.converged:
+        return None
+
+    ncas = int(cfg["active_orbitals"])
+    nelecas = int(cfg["active_electrons"])
+
+    def _roots_for(sym, nroots):
+        mc = mcscf.CASCI(mf, ncas, nelecas)
+        solver = fci.direct_spin0_symm.FCI(mol)
+        solver.wfnsym = sym
+        solver.nroots = int(nroots)
+        mc.fcisolver = solver
+        mc.kernel()
+        return np.atleast_1d(mc.e_tot).astype(float)
+
+    e2_roots = np.concatenate(
+        [
+            _roots_for("E2x", nroots_per_component),
+            _roots_for("E2y", nroots_per_component),
+        ]
+    )
+    e2_roots.sort()
+
+    unique_e2 = []
+    for val in e2_roots:
+        if not unique_e2 or abs(val - unique_e2[-1]) > tol:
+            unique_e2.append(float(val))
+
+    if len(unique_e2) < 2:
+        return None
+
+    target_2_1_delta = unique_e2[1]
+    eig = np.asarray(eigvals, dtype=float)
+    state_idx = int(np.argmin(np.abs(eig - target_2_1_delta)))
+    matched_energy = float(eig[state_idx])
+    return {
+        "state_idx": state_idx,
+        "matched_energy": matched_energy,
+        "reference_energy": float(target_2_1_delta),
+        "abs_diff": float(abs(matched_energy - target_2_1_delta)),
+    }
+
+
 def _as_array(coords):
     try:
         from pennylane import numpy as pnp
@@ -35,13 +103,13 @@ def _default_problem():
     symbols = ["C", "H"]
     coords = [
         [0.0, 0.0, 0.0],
-        [0.0, 0.0, 1.1285],
+        [0.0, 0.0, 2.261840985],
     ]
     return {
         "symbols": symbols,
         "geometry": _as_array(coords),
-        "active_electrons": 4,
-        "active_orbitals": 4,
+        "active_electrons": 6,
+        "active_orbitals": 6,
         "charge": 1,
         "basis": "6-31g",
         "unit": "angstrom",
@@ -79,7 +147,7 @@ def _parse_args():
     )
     parser.add_argument(
         "--state-idx",
-        default=1,
+        default=13,
         type=int,
         help="QSC-EOM eigenvector index used for R1/R2 output.",
     )
@@ -107,6 +175,7 @@ def main():
     amp_file = None if args.skip_files else str(OUTPUT_DIR / "t1_t2.txt")
     r1r2_file = None if args.skip_files else str(OUTPUT_DIR / "out_r1_r2.txt")
     qscex_ene_file = None if args.skip_files else str(OUTPUT_DIR / "qscex_ene")
+    labels_file = None if args.skip_files else str(OUTPUT_DIR / "qscex_labels.txt")
 
     if run_scf:
         print("\n[1/3] Running SCF...")
@@ -118,12 +187,13 @@ def main():
             unit=cfg["unit"],
             active_electrons=cfg["active_electrons"],
             active_orbitals=cfg["active_orbitals"],
+            count_space="active",
             fock_output=fock_file,
             two_e_output=two_e_file,
         )
         print(
             "SCF completed. Orbitals:",
-            scf_result["n_spatial_orbitals"],
+            scf_result["reported_n_spatial_orbitals"],
             "| converged:",
             scf_result["converged"],
         )
@@ -170,6 +240,25 @@ def main():
             with open(qscex_ene_file, "w", encoding="utf-8") as f:
                 for value in eig:
                     f.write(f"{float(value)}\n")
+
+        label_match = _estimate_2_1_delta_state(cfg, eig)
+        if label_match is not None:
+            print(
+                "Estimated 2^1Delta state:",
+                f"state_idx={label_match['state_idx']}",
+                f"energy={label_match['matched_energy']}",
+                f"(reference={label_match['reference_energy']}, |delta|={label_match['abs_diff']})",
+            )
+            if labels_file:
+                with open(labels_file, "w", encoding="utf-8") as f:
+                    f.write(
+                        f"2^1Delta\tstate_idx={label_match['state_idx']}\t"
+                        f"energy={label_match['matched_energy']}\t"
+                        f"reference={label_match['reference_energy']}\t"
+                        f"abs_diff={label_match['abs_diff']}\n"
+                    )
+        else:
+            print("Could not assign the 2^1Delta label for this run.")
 
 
 if __name__ == "__main__":

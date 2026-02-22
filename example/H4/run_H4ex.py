@@ -117,12 +117,13 @@ def main():
             unit="angstrom",
             active_electrons=cfg["active_electrons"],
             active_orbitals=cfg["active_orbitals"],
+            count_space="active",
             fock_output=fock_file,
             two_e_output=two_e_file,
         )
         print(
             "SCF completed. Orbitals:",
-            scf_result["n_spatial_orbitals"],
+            scf_result["reported_n_spatial_orbitals"],
             "| converged:",
             scf_result["converged"],
         )

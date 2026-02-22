@@ -149,12 +149,15 @@ def main() -> None:
             charge=cfg["charge"],
             unit="bohr",
             basis=cfg["basis"],
+            active_electrons=cfg["active_electrons"],
+            active_orbitals=cfg["active_orbitals"],
+            count_space="active",
             fock_output=None if args.skip_files else "fock.txt",
             two_e_output=None if args.skip_files else "two_elec.txt",
         )
         print(
             "SCF completed. Orbitals:",
-            scf_result["n_spatial_orbitals"],
+            scf_result["reported_n_spatial_orbitals"],
             "| converged:",
             scf_result["converged"],
         )

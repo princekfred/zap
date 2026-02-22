@@ -60,6 +60,7 @@ def run_scf(
     unit="Bohr",
     active_electrons=None,
     active_orbitals=None,
+    count_space="active",
     fock_output="fock.txt",
     two_e_output="two_elec.txt",
     threshold=1e-10,
@@ -130,10 +131,28 @@ def run_scf(
         active_orbitals=active_orbitals,
     )
     active_orbital_energies = orbital_energies[active_spatial]
+    active_n_spatial_orbitals = len(active_spatial)
+    if active_electrons is None:
+        active_n_occ = n_occ
+    else:
+        active_n_occ = int(active_electrons) // 2
+    active_n_vir = active_n_spatial_orbitals - active_n_occ
 
-    print("Number of spatial orbitals:", n_spatial_orbitals)
-    print("Number of occupied orbitals:", n_occ)
-    print("Number of virtual orbitals:", n_vir)
+    if count_space not in {"full", "active"}:
+        raise ValueError("`count_space` must be either 'full' or 'active'")
+
+    if count_space == "active":
+        reported_n_spatial_orbitals = active_n_spatial_orbitals
+        reported_n_occ = active_n_occ
+        reported_n_vir = active_n_vir
+    else:
+        reported_n_spatial_orbitals = n_spatial_orbitals
+        reported_n_occ = n_occ
+        reported_n_vir = n_vir
+
+    print("Number of spatial orbitals:", reported_n_spatial_orbitals)
+    print("Number of occupied orbitals:", reported_n_occ)
+    print("Number of virtual orbitals:", reported_n_vir)
     print(
         "SCF Orbital energies in active space (Hartree):",
         active_orbital_energies,
@@ -148,9 +167,9 @@ def run_scf(
                     f"  {sym} {float(xyz[0]): .10f} {float(xyz[1]): .10f} {float(xyz[2]): .10f}\n"
                 )
             f.write("\n")
-            f.write(f"Number of spatial orbitals: {n_spatial_orbitals}\n")
-            f.write(f"Number of occupied orbitals: {n_occ}\n")
-            f.write(f"Number of virtual orbitals: {n_vir}\n")
+            f.write(f"Number of spatial orbitals: {reported_n_spatial_orbitals}\n")
+            f.write(f"Number of occupied orbitals: {reported_n_occ}\n")
+            f.write(f"Number of virtual orbitals: {reported_n_vir}\n")
             f.write(
                 f"SCF Orbital energies in active space (Hartree): {active_orbital_energies}\n"
             )
@@ -220,6 +239,12 @@ def run_scf(
         "n_spatial_orbitals": n_spatial_orbitals,
         "n_occ": n_occ,
         "n_vir": n_vir,
+        "reported_n_spatial_orbitals": reported_n_spatial_orbitals,
+        "reported_n_occ": reported_n_occ,
+        "reported_n_vir": reported_n_vir,
+        "active_n_spatial_orbitals": active_n_spatial_orbitals,
+        "active_n_occ": active_n_occ,
+        "active_n_vir": active_n_vir,
         "orbital_energies": orbital_energies,
         "active_spatial_orbitals": active_spatial,
         "active_orbital_energies": active_orbital_energies,
