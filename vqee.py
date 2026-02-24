@@ -14,6 +14,8 @@ Implementation notes:
   - ``shots`` is accepted for API compatibility but ignored (statevector energy).
 """
 
+from qchem_active_space import build_molecular_hamiltonian_enforcing_active_space
+
 
 def _wire0_is_msb(qml, wire_order):
     """Infer computational-basis bit ordering for the given ``wire_order``."""
@@ -234,7 +236,8 @@ def gs_exact(
         geometry = pnp.array(geometry, dtype=float)
 
     try:
-        H, n_qubits = qml.qchem.molecular_hamiltonian(
+        H, n_qubits, used_method = build_molecular_hamiltonian_enforcing_active_space(
+            qml,
             symbols,
             geometry,
             basis=basis,
@@ -251,6 +254,8 @@ def gs_exact(
                 "  python -m pip install pyscf"
             ) from exc
         raise
+    if used_method != method:
+        print("Hamiltonian backend used:", used_method)
 
     wire_order = list(range(n_qubits))
     hf_state = qml.qchem.hf_state(active_electrons, n_qubits)

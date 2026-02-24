@@ -1,5 +1,7 @@
 """VQE helpers (PennyLane)."""
 
+from qchem_active_space import build_molecular_hamiltonian_enforcing_active_space
+
 def gs_exact(
     symbols,
     geometry,
@@ -34,7 +36,8 @@ def gs_exact(
 
     # Build the electronic Hamiltonian
     try:
-        H, qubits = qml.qchem.molecular_hamiltonian(
+        H, qubits, used_method = build_molecular_hamiltonian_enforcing_active_space(
+            qml,
             symbols,
             geometry,
             basis=basis,
@@ -49,6 +52,13 @@ def gs_exact(
             "Failed to build the molecular Hamiltonian. For `method=\"pyscf\"`, install PySCF:\n"
             "  python -m pip install pyscf"
         ) from exc
+    except RuntimeError as exc:
+        raise RuntimeError(
+            "Active-space build failed. Verify `active_electrons` and `active_orbitals`."
+        ) from exc
+
+    if used_method != method:
+        print("Hamiltonian backend used:", used_method)
 
     hf_state = qml.qchem.hf_state(active_electrons, qubits)
 

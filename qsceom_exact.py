@@ -2,6 +2,7 @@
 
 import exc
 import vqee
+from qchem_active_space import build_molecular_hamiltonian_enforcing_active_space
 
 
 def _occ_to_index(occ, n_qubits, wire0_is_msb):
@@ -71,7 +72,8 @@ def ee_exact(
     except TypeError:
         geometry = pnp.array(geometry, dtype=float)
 
-    H, qubits = qml.qchem.molecular_hamiltonian(
+    H, qubits, used_method = build_molecular_hamiltonian_enforcing_active_space(
+        qml,
         symbols,
         geometry,
         basis=basis,
@@ -81,6 +83,8 @@ def ee_exact(
         active_orbitals=active_orbitals,
         charge=charge,
     )
+    if used_method != method:
+        print("Hamiltonian backend used:", used_method)
     h_mat = np.asarray(qml.matrix(H, wire_order=list(range(qubits))), dtype=complex)
 
     singles, doubles = qml.qchem.excitations(active_electrons, qubits)

@@ -42,8 +42,8 @@ def _default_problem():
         "symbols": symbols,
         "geometry": _as_array(coords),
         # Freeze only the lowest-energy molecular orbital (one doubly occupied MO).
-        "active_electrons": 8,
-        "active_orbitals": 10,
+        "active_electrons": 6,
+        "active_orbitals": 6,
         "charge": 0,
         "basis": "6-31g",
         "unit": "angstrom",
