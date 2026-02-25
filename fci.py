@@ -24,7 +24,7 @@ n_excited = 117
 
 # CASCI roots: ground + excited
 mc = mcscf.CASCI(mf, ncas, nelecas)
-mc.fcisolver.nroots = n_excited + 1
+mc.fcisolver.nroots = n_excited 
 energies = np.atleast_1d(mc.kernel()[0]).astype(float)
 
 # Excited-state energies only
