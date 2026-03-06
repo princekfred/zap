@@ -1,0 +1,9 @@
+Basis set: 6-31g
+Geometry (angstrom):
+  N  0.0000000000  0.0000000000 -0.5488400000
+  N  0.0000000000  0.0000000000  0.5488400000
+
+Number of spatial orbitals: 6
+Number of occupied orbitals: 3
+Number of virtual orbitals: 3
+SCF Orbital energies in active space (Hartree): [-0.62959681 -0.62221429 -0.62221429  0.15102232  0.15102232  0.5893098 ]
