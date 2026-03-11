@@ -1,4 +1,6 @@
 Spin-orbital antisymmetrized integrals <ij||kl> (MO basis)
+Spin-orbital indices below are active-space local (0-based, contiguous).
+
 0^ 1^ 0 1	|	-0.2926647022771467
 0^ 1^ 0 5	|	0.035053569677675776
 0^ 1^ 1 0	|	0.2926647022771467

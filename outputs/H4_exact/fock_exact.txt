@@ -8,4 +8,4 @@ Geometry (angstrom):
 Number of spatial orbitals: 4
 Number of occupied orbitals: 2
 Number of virtual orbitals: 2
-SCF Orbital energies (Hartree): [-0.19029166 -0.17162019  0.00790156  0.02786371]
+SCF Orbital energies in active space (Hartree): [-0.19029166 -0.17162019  0.00790156  0.02786371]

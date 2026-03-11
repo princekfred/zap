@@ -107,6 +107,7 @@ def main():
     two_e_file = None if args.skip_files else str(OUTPUT_DIR / "two_elec_exact.txt")
     amp_file = None if args.skip_files else str(OUTPUT_DIR / "t1_t2_exact.txt")
     r1r2_file = None if args.skip_files else str(OUTPUT_DIR / "out_r1_r2_exact.txt")
+    qscex_ene_file = None if args.skip_files else str(OUTPUT_DIR / "qsceom_ene")
 
     if run_scf:
         print("\n[1/3] Running SCF...")
@@ -149,7 +150,7 @@ def main():
             raise RuntimeError("QSC-EOM requested without optimized parameters.")
 
         print("\n[3/3] Running exact QSC-EOM...")
-        qsceom_exact.ee_exact(
+        eig = qsceom_exact.ee_exact(
             cfg["symbols"],
             cfg["geometry"],
             cfg["active_electrons"],
@@ -162,6 +163,12 @@ def main():
             state_idx=args.state_idx,
             r1r2_outfile=r1r2_file,
         )
+        print("QSC-EOM energies (Hartree):", eig)
+
+        if qscex_ene_file:
+            with open(qscex_ene_file, "w", encoding="utf-8") as f:
+                for value in eig:
+                    f.write(f"{float(value)}\n")
 
 
 if __name__ == "__main__":
