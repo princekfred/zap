@@ -12,7 +12,7 @@ import SCF
 import qsceom_exact
 import vqee
 
-OUTPUT_DIR = PROJECT_ROOT / "outputs" / "CH+_exact"
+OUTPUT_DIR = PROJECT_ROOT / "outputs" / "CH+ Full operator"
 
 
 def _as_array(coords):

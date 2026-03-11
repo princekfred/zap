@@ -12,7 +12,7 @@ import SCF
 import qsceom
 import vqe
 
-OUTPUT_DIR = PROJECT_ROOT / "outputs" / "CH+"
+OUTPUT_DIR = PROJECT_ROOT / "outputs" / "CH+ Trotterized"
 
 
 def _estimate_2_1_delta_state(cfg, eigvals, nroots_per_component=3, tol=1e-6):

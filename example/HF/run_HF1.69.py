@@ -12,7 +12,7 @@ import SCF
 import qsceom
 import vqe
 
-OUTPUT_DIR = PROJECT_ROOT / "outputs" / "HF_1.69"
+OUTPUT_DIR = PROJECT_ROOT / "outputs" / "HF_1.69 Trotterized"
 
 def _estimate_2_1_sigma_state(cfg, eigvals, nroots_per_component=3, tol=1e-6):
     """Estimate which QSC-EOM root corresponds to the 2^1Sigma state.
