@@ -9,7 +9,7 @@ def gs_exact(
     active_orbitals,
     charge,
     method="pyscf",
-    basis="sto-3g",
+    basis="6-31g",
     unit="bohr",
     shots=None,
     max_iter=100,
@@ -97,9 +97,11 @@ def gs_exact(
         raise ValueError("`max_iter` must be >= 1")
 
     optimizer = qml.GradientDescentOptimizer(stepsize=0.5)
-    energy = None
+    best_energy = float(hf_e)
+    best_params = np.array(params, dtype=float)
     for _ in range(max_iter):
-        params, energy = optimizer.step_and_cost(
+        params_before_step = np.array(params, dtype=float)
+        params, energy_before_step = optimizer.step_and_cost(
             circuit,
             params,
             wires=range(qubits),
@@ -107,9 +109,28 @@ def gs_exact(
             d_wires=d_wires,
             hf_state=hf_state,
         )
+        energy_before_step = float(energy_before_step)
+        if energy_before_step < best_energy:
+            best_energy = energy_before_step
+            best_params = params_before_step
 
-    e_min = energy
+    final_energy = float(
+        circuit(
+            params,
+            wires=range(qubits),
+            s_wires=s_wires,
+            d_wires=d_wires,
+            hf_state=hf_state,
+        )
+    )
+    if final_energy < best_energy:
+        best_energy = final_energy
+        best_params = np.array(params, dtype=float)
+
+    params = best_params
+    e_min = best_energy
     print("\nOptimal parameters:\n", list(params))
+    print("Final iteration energy = ", final_energy)
     print("Energy minimum = ", e_min)
 
     # Print amplitudes in exact excitation ordering (singles then doubles)
