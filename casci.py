@@ -105,10 +105,16 @@ def build_casci_hamiltonian(
     if casci_output_path:
         out_path = Path(casci_output_path)
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        np.savetxt(out_path, excited, fmt="%.12f")
+        header = (
+            f"converged_scf_energy_hartree {float(mf.e_tot):.12f}\n"
+            "casci_excited_state_energies_hartree"
+        )
+        np.savetxt(out_path, excited, fmt="%.12f", header=header, comments="# ")
 
     h1_cas, core_energy = mc.get_h1cas()
     h2_cas = ao2mo.restore(1, mc.get_h2cas(), ncas)
+    # Match PennyLane's expected physicists' ordering for two-electron tensors.
+    h2_cas = np.swapaxes(h2_cas, 1, 3)
     h_fermion = qml.qchem.fermionic_observable(
         np.array([float(core_energy)]),
         np.asarray(h1_cas, dtype=float),

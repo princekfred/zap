@@ -150,8 +150,7 @@ def qsc_eom(
 
     null_state = np.zeros(qubits,int)
     excitation_configs = inite(active_electrons, qubits)
-    #dev = _make_device(qubits, norm_shots)
-    dev = qml.device("lightning.qubit", wires=qubits)
+    dev = _make_device(qubits, norm_shots)
 
     @qml.qnode(dev)
     def circuit_d(params, occ, wires, s_wires, d_wires, hf_state):
