@@ -9,7 +9,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 import SCF
-import fci
+import casci
 import qsceom
 import vqe
 
@@ -49,7 +49,6 @@ def _default_problem():
         "charge": 0,
         "basis": "sto-3g",
         "unit": "angstrom",
-        "casci_n_excited": 26,
     }
 
 
@@ -138,16 +137,16 @@ def main():
     shared_hamiltonian = None
     shared_qubits = None
     if run_vqe:
-        shared_hamiltonian, shared_qubits, _ = fci.build_casci_hamiltonian_from_problem(
+        shared_hamiltonian, shared_qubits, casci_energies = casci.build_casci_hamiltonian_from_problem(
             cfg,
-            n_excited=cfg["casci_n_excited"],
             casci_output_path=casci_file,
         )
         print(
-            "Loaded CASCI/FCI Hamiltonian from fci.py with",
+            "Loaded CASCI/FCI Hamiltonian from casci.py with",
             shared_qubits,
             "qubits.",
         )
+        print("CASCI excited states generated:", max(len(casci_energies) - 1, 0))
 
     params = None
     if run_vqe:

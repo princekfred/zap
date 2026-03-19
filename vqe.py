@@ -1,30 +1,5 @@
 """VQE helpers (PennyLane)."""
 
-
-def _build_molecular_hamiltonian(
-    qml,
-    symbols,
-    geometry,
-    *,
-    basis,
-    method,
-    unit,
-    active_electrons,
-    active_orbitals,
-    charge,
-):
-    return qml.qchem.molecular_hamiltonian(
-        symbols,
-        geometry,
-        basis=basis,
-        method=method,
-        unit=unit,
-        charge=charge,
-        mult=1,
-        active_electrons=active_electrons,
-        active_orbitals=active_orbitals,
-    )
-
 def gs_exact(
     symbols,
     geometry,
@@ -32,8 +7,8 @@ def gs_exact(
     active_orbitals,
     charge,
     method="pyscf",
-    basis="6-31g",
-    unit="bohr",
+    basis=None,
+    unit=None,
     shots=None,
     max_iter=100,
     amplitudes_outfile=None,
@@ -53,45 +28,21 @@ def gs_exact(
             "  python -m pip install pennylane pennylane-lightning pyscf"
         ) from exc
 
-    # PennyLane's qchem helpers expect NumPy semantics (e.g., `.flatten()`).
-    try:
-        geometry = np.array(geometry, dtype=float, requires_grad=False)
-    except TypeError:
-        geometry = np.array(geometry, dtype=float)
-
-    # Build (or reuse) the electronic Hamiltonian.
     if hamiltonian is None:
-        try:
-            H, qubits = _build_molecular_hamiltonian(
-                qml,
-                symbols,
-                geometry,
-                basis=basis,
-                method=method,
-                unit=unit,
-                active_electrons=active_electrons,
-                active_orbitals=active_orbitals,
-                charge=charge,
-            )
-        except ModuleNotFoundError as exc:
-            raise ModuleNotFoundError(
-                "Failed to build the molecular Hamiltonian. For `method=\"pyscf\"`, install PySCF:\n"
-                "  python -m pip install pyscf"
-            ) from exc
-        except RuntimeError as exc:
-            raise RuntimeError(
-                "Active-space build failed. Verify `active_electrons` and `active_orbitals`."
-            ) from exc
+        raise ValueError(
+            "`hamiltonian` is required. Internal Hamiltonian building has been disabled."
+        )
+    if basis is None or unit is None:
+        raise ValueError("`basis` and `unit` must be provided by the caller.")
 
-    else:
-        H = hamiltonian
-        if qubits is None:
-            try:
-                qubits = len(H.wires)
-            except Exception as exc:
-                raise ValueError(
-                    "Could not infer `qubits` from the provided Hamiltonian. Pass `qubits` explicitly."
-                ) from exc
+    H = hamiltonian
+    if qubits is None:
+        try:
+            qubits = len(H.wires)
+        except Exception as exc:
+            raise ValueError(
+                "Could not infer `qubits` from the provided Hamiltonian. Pass `qubits` explicitly."
+            ) from exc
 
     qubits = int(qubits)
 

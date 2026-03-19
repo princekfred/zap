@@ -23,7 +23,7 @@ def build_casci_hamiltonian(
     charge=0,
     basis="sto-3g",
     unit="angstrom",
-    n_excited=0,
+    n_excited=None,
     casci_output_path=None,
 ):
     """Build an active-space qubit Hamiltonian from a CASCI reference.
@@ -33,6 +33,11 @@ def build_casci_hamiltonian(
     tuple
         (hamiltonian, qubits, energies) where `energies` contains
         ground + excited CASCI roots.
+
+    Notes
+    -----
+    If `n_excited` is `None`, all roots in the fixed-Sz active-space FCI
+    determinant manifold are requested automatically.
     """
 
     try:
@@ -52,6 +57,7 @@ def build_casci_hamiltonian(
 
     try:
         from pyscf import ao2mo, gto, mcscf, scf
+        from pyscf.fci import cistring
     except ModuleNotFoundError as exc:
         raise ModuleNotFoundError(
             "Missing dependency 'pyscf'. Install with:\n  python -m pip install pyscf"
@@ -81,7 +87,17 @@ def build_casci_hamiltonian(
         raise RuntimeError("RHF did not converge before CASCI Hamiltonian build.")
 
     mc = mcscf.CASCI(mf, ncas, nelecas)
-    n_roots = int(n_excited) + 1 if int(n_excited) >= 0 else 1
+    n_alpha = (nelecas + int(mol.spin)) // 2
+    n_beta = nelecas - n_alpha
+    max_roots = int(cistring.num_strings(ncas, n_alpha) * cistring.num_strings(ncas, n_beta))
+
+    if n_excited is None:
+        n_roots = max_roots
+    else:
+        n_roots = int(n_excited) + 1 if int(n_excited) >= 0 else 1
+        if n_roots > max_roots:
+            n_roots = max_roots
+
     mc.fcisolver.nroots = n_roots
     energies = np.atleast_1d(mc.kernel()[0]).astype(float)
     excited = energies[1:]
@@ -111,7 +127,7 @@ def build_casci_hamiltonian(
 def build_casci_hamiltonian_from_problem(
     problem_cfg,
     *,
-    n_excited=0,
+    n_excited=None,
     casci_output_path=None,
 ):
     """Build CASCI Hamiltonian from a run-script problem dictionary."""
@@ -135,6 +151,6 @@ def build_casci_hamiltonian_from_problem(
 
 if __name__ == "__main__":
     raise SystemExit(
-        "fci.py is a library module. Call `build_casci_hamiltonian_from_problem(...)` "
+        "casci.py is a library module. Call `build_casci_hamiltonian_from_problem(...)` "
         "from a run script (for example `example/H4/run_H4.py`)."
     )

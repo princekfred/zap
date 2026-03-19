@@ -16,31 +16,6 @@ np = None
 _inite = None
 
 
-def _build_molecular_hamiltonian(
-    qml,
-    symbols,
-    coordinates,
-    *,
-    basis,
-    method,
-    unit,
-    charge,
-    active_electrons,
-    active_orbitals,
-):
-    return qml.qchem.molecular_hamiltonian(
-        symbols,
-        coordinates,
-        basis=basis,
-        method=method,
-        unit=unit,
-        charge=charge,
-        mult=1,
-        active_electrons=active_electrons,
-        active_orbitals=active_orbitals,
-    )
-
-
 def _require_quantum_deps():
     global qml, np
     if qml is not None and np is not None:
@@ -122,8 +97,8 @@ def qsc_eom(
     ash_excitation=None,
     shots: int = 0,
     method: str = "pyscf",
-    basis: str = "sto-3g",
-    unit: str = "angstrom",
+    basis: Optional[str] = None,
+    unit: Optional[str] = None,
     hamiltonian=None,
     qubits: Optional[int] = None,
 ):
@@ -150,28 +125,22 @@ def qsc_eom(
         raise ValueError("params must be a 1D array-like")
     if ash_excitation is not None and len(ash_excitation) != len(params):
         raise ValueError("len(ash_excitation) must match len(params)")
+    if basis is None or unit is None:
+        raise ValueError("`basis` and `unit` must be provided by the caller.")
 
     if hamiltonian is None:
-        H, qubits = _build_molecular_hamiltonian(
-            qml,
-            symbols,
-            coordinates,
-            basis=basis,
-            method=method,
-            active_electrons=active_electrons,
-            active_orbitals=active_orbitals,
-            charge=charge,
-            unit=unit,
+        raise ValueError(
+            "`hamiltonian` is required. Internal Hamiltonian building has been disabled."
         )
-    else:
-        H = hamiltonian
-        if qubits is None:
-            try:
-                qubits = len(H.wires)
-            except Exception as exc:
-                raise ValueError(
-                    "Could not infer `qubits` from the provided Hamiltonian. Pass `qubits` explicitly."
-                ) from exc
+
+    H = hamiltonian
+    if qubits is None:
+        try:
+            qubits = len(H.wires)
+        except Exception as exc:
+            raise ValueError(
+                "Could not infer `qubits` from the provided Hamiltonian. Pass `qubits` explicitly."
+            ) from exc
 
     qubits = int(qubits)
     singles, doubles = qml.qchem.excitations(active_electrons, qubits)
@@ -265,8 +234,8 @@ def ee_exact(
     params,
     shots=0,
     method="pyscf",
-    basis="sto-3g",
-    unit="bohr",
+    basis=None,
+    unit=None,
     state_idx=1,
     r1r2_outfile="out_r1_r2.txt",
     hamiltonian=None,
