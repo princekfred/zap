@@ -1,6 +1,29 @@
 """VQE helpers (PennyLane)."""
 
-from qchem_active_space import build_molecular_hamiltonian_enforcing_active_space
+
+def _build_molecular_hamiltonian(
+    qml,
+    symbols,
+    geometry,
+    *,
+    basis,
+    method,
+    unit,
+    active_electrons,
+    active_orbitals,
+    charge,
+):
+    return qml.qchem.molecular_hamiltonian(
+        symbols,
+        geometry,
+        basis=basis,
+        method=method,
+        unit=unit,
+        charge=charge,
+        mult=1,
+        active_electrons=active_electrons,
+        active_orbitals=active_orbitals,
+    )
 
 def gs_exact(
     symbols,
@@ -39,7 +62,7 @@ def gs_exact(
     # Build (or reuse) the electronic Hamiltonian.
     if hamiltonian is None:
         try:
-            H, qubits, used_method = build_molecular_hamiltonian_enforcing_active_space(
+            H, qubits = _build_molecular_hamiltonian(
                 qml,
                 symbols,
                 geometry,
@@ -60,8 +83,6 @@ def gs_exact(
                 "Active-space build failed. Verify `active_electrons` and `active_orbitals`."
             ) from exc
 
-        if used_method != method:
-            print("Hamiltonian backend used:", used_method)
     else:
         H = hamiltonian
         if qubits is None:

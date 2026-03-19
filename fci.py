@@ -108,28 +108,33 @@ def build_casci_hamiltonian(
     return h_qubit, qubits, energies
 
 
-def save_default_ch_plus_casci():
-    """Preserve original fci.py behavior when run as a script."""
+def build_casci_hamiltonian_from_problem(
+    problem_cfg,
+    *,
+    n_excited=0,
+    casci_output_path=None,
+):
+    """Build CASCI Hamiltonian from a run-script problem dictionary."""
 
-    out_path = Path("outputs/CH+ Trotterized/CASCI_output.txt")
-    symbols = ["C", "H"]
-    coords = [
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 2.261840985],
-    ]
-    build_casci_hamiltonian(
-        symbols,
-        coords,
-        active_electrons=6,
-        active_orbitals=6,
-        charge=1,
-        basis="6-31g",
-        unit="angstrom",
-        n_excited=117,
-        casci_output_path=out_path,
+    required = {"symbols", "geometry", "active_electrons", "active_orbitals"}
+    missing = sorted(required.difference(problem_cfg))
+    if missing:
+        raise KeyError(f"Missing required problem keys for CASCI Hamiltonian: {missing}")
+
+    return build_casci_hamiltonian(
+        problem_cfg["symbols"],
+        problem_cfg["geometry"],
+        active_electrons=problem_cfg["active_electrons"],
+        active_orbitals=problem_cfg["active_orbitals"],
+        charge=problem_cfg.get("charge", 0),
+        basis=problem_cfg.get("basis", "sto-3g"),
+        unit=problem_cfg.get("unit", "angstrom"),
+        n_excited=n_excited,
+        casci_output_path=casci_output_path,
     )
-    print(f"Saved CASCI excited-state energies to {out_path}")
-
 
 if __name__ == "__main__":
-    save_default_ch_plus_casci()
+    raise SystemExit(
+        "fci.py is a library module. Call `build_casci_hamiltonian_from_problem(...)` "
+        "from a run script (for example `example/H4/run_H4.py`)."
+    )

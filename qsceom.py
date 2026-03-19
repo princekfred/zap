@@ -6,8 +6,6 @@ import importlib.util
 from pathlib import Path
 from typing import Optional, Sequence
 
-from qchem_active_space import build_molecular_hamiltonian_enforcing_active_space
-
 try:
     from mpi4py import MPI as _MPI
 except ImportError:  # pragma: no cover
@@ -16,6 +14,31 @@ except ImportError:  # pragma: no cover
 qml = None
 np = None
 _inite = None
+
+
+def _build_molecular_hamiltonian(
+    qml,
+    symbols,
+    coordinates,
+    *,
+    basis,
+    method,
+    unit,
+    charge,
+    active_electrons,
+    active_orbitals,
+):
+    return qml.qchem.molecular_hamiltonian(
+        symbols,
+        coordinates,
+        basis=basis,
+        method=method,
+        unit=unit,
+        charge=charge,
+        mult=1,
+        active_electrons=active_electrons,
+        active_orbitals=active_orbitals,
+    )
 
 
 def _require_quantum_deps():
@@ -129,7 +152,7 @@ def qsc_eom(
         raise ValueError("len(ash_excitation) must match len(params)")
 
     if hamiltonian is None:
-        H, qubits, used_method = build_molecular_hamiltonian_enforcing_active_space(
+        H, qubits = _build_molecular_hamiltonian(
             qml,
             symbols,
             coordinates,
@@ -140,8 +163,6 @@ def qsc_eom(
             charge=charge,
             unit=unit,
         )
-        if used_method != method:
-            print("Hamiltonian backend used:", used_method)
     else:
         H = hamiltonian
         if qubits is None:

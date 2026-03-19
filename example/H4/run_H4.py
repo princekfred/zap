@@ -49,6 +49,7 @@ def _default_problem():
         "charge": 0,
         "basis": "sto-3g",
         "unit": "angstrom",
+        "casci_n_excited": 26,
     }
 
 
@@ -137,15 +138,9 @@ def main():
     shared_hamiltonian = None
     shared_qubits = None
     if run_vqe:
-        shared_hamiltonian, shared_qubits, _ = fci.build_casci_hamiltonian(
-            cfg["symbols"],
-            cfg["geometry"],
-            active_electrons=cfg["active_electrons"],
-            active_orbitals=cfg["active_orbitals"],
-            charge=cfg["charge"],
-            basis=cfg["basis"],
-            unit=cfg["unit"],
-            n_excited=26,
+        shared_hamiltonian, shared_qubits, _ = fci.build_casci_hamiltonian_from_problem(
+            cfg,
+            n_excited=cfg["casci_n_excited"],
             casci_output_path=casci_file,
         )
         print(
