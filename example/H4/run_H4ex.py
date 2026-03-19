@@ -111,7 +111,7 @@ def main():
     amp_file = None if args.skip_files else str(OUTPUT_DIR / "t1_t2_exact.txt")
     r1r2_file = None if args.skip_files else str(OUTPUT_DIR / "out_r1_r2_exact.txt")
     qscex_ene_file = None if args.skip_files else str(OUTPUT_DIR / "qsceom_ene")
-    casci_file = None if args.skip_files else str(OUTPUT_DIR / "CASCI_output.txt")
+    #casci_file = None if args.skip_files else str(OUTPUT_DIR / "CASCI_output.txt")
 
     if run_scf:
         print("\n[1/3] Running SCF...")

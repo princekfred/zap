@@ -1,0 +1,7 @@
+state_label	2^1Delta (paper)
+assignment_note	second singlet Delta root from symmetry-resolved CASCI (E2x/E2y)
+ground_energy_hartree	-37.820655585356
+reference_2_1Delta_energy_hartree	-37.357994214056
+reference_gap_hartree	0.462661371300
+reference_gap_eV	12.58965728
+old_assumption_state_idx_9	corresponds to 1^1Delta, not 2^1Delta
