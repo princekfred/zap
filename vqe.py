@@ -14,6 +14,8 @@ def gs_exact(
     shots=None,
     max_iter=100,
     amplitudes_outfile=None,
+    hamiltonian=None,
+    qubits=None,
 ):
     """Run a UCCSD-VQE ground-state calculation and print results.
 
@@ -34,31 +36,43 @@ def gs_exact(
     except TypeError:
         geometry = np.array(geometry, dtype=float)
 
-    # Build the electronic Hamiltonian
-    try:
-        H, qubits, used_method = build_molecular_hamiltonian_enforcing_active_space(
-            qml,
-            symbols,
-            geometry,
-            basis=basis,
-            method=method,
-            unit=unit,
-            active_electrons=active_electrons,
-            active_orbitals=active_orbitals,
-            charge=charge,
-        )
-    except ModuleNotFoundError as exc:
-        raise ModuleNotFoundError(
-            "Failed to build the molecular Hamiltonian. For `method=\"pyscf\"`, install PySCF:\n"
-            "  python -m pip install pyscf"
-        ) from exc
-    except RuntimeError as exc:
-        raise RuntimeError(
-            "Active-space build failed. Verify `active_electrons` and `active_orbitals`."
-        ) from exc
+    # Build (or reuse) the electronic Hamiltonian.
+    if hamiltonian is None:
+        try:
+            H, qubits, used_method = build_molecular_hamiltonian_enforcing_active_space(
+                qml,
+                symbols,
+                geometry,
+                basis=basis,
+                method=method,
+                unit=unit,
+                active_electrons=active_electrons,
+                active_orbitals=active_orbitals,
+                charge=charge,
+            )
+        except ModuleNotFoundError as exc:
+            raise ModuleNotFoundError(
+                "Failed to build the molecular Hamiltonian. For `method=\"pyscf\"`, install PySCF:\n"
+                "  python -m pip install pyscf"
+            ) from exc
+        except RuntimeError as exc:
+            raise RuntimeError(
+                "Active-space build failed. Verify `active_electrons` and `active_orbitals`."
+            ) from exc
 
-    if used_method != method:
-        print("Hamiltonian backend used:", used_method)
+        if used_method != method:
+            print("Hamiltonian backend used:", used_method)
+    else:
+        H = hamiltonian
+        if qubits is None:
+            try:
+                qubits = len(H.wires)
+            except Exception as exc:
+                raise ValueError(
+                    "Could not infer `qubits` from the provided Hamiltonian. Pass `qubits` explicitly."
+                ) from exc
+
+    qubits = int(qubits)
 
     hf_state = qml.qchem.hf_state(active_electrons, qubits)
 

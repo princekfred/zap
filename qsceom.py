@@ -101,6 +101,8 @@ def qsc_eom(
     method: str = "pyscf",
     basis: str = "sto-3g",
     unit: str = "angstrom",
+    hamiltonian=None,
+    qubits: Optional[int] = None,
 ):
     """Build and diagonalize the QSC-EOM M-matrix.
 
@@ -126,19 +128,31 @@ def qsc_eom(
     if ash_excitation is not None and len(ash_excitation) != len(params):
         raise ValueError("len(ash_excitation) must match len(params)")
 
-    H, qubits, used_method = build_molecular_hamiltonian_enforcing_active_space(
-        qml,
-        symbols,
-        coordinates,
-        basis=basis,
-        method=method,
-        active_electrons=active_electrons,
-        active_orbitals=active_orbitals,
-        charge=charge,
-        unit=unit,
-    )
-    if used_method != method:
-        print("Hamiltonian backend used:", used_method)
+    if hamiltonian is None:
+        H, qubits, used_method = build_molecular_hamiltonian_enforcing_active_space(
+            qml,
+            symbols,
+            coordinates,
+            basis=basis,
+            method=method,
+            active_electrons=active_electrons,
+            active_orbitals=active_orbitals,
+            charge=charge,
+            unit=unit,
+        )
+        if used_method != method:
+            print("Hamiltonian backend used:", used_method)
+    else:
+        H = hamiltonian
+        if qubits is None:
+            try:
+                qubits = len(H.wires)
+            except Exception as exc:
+                raise ValueError(
+                    "Could not infer `qubits` from the provided Hamiltonian. Pass `qubits` explicitly."
+                ) from exc
+
+    qubits = int(qubits)
     singles, doubles = qml.qchem.excitations(active_electrons, qubits)
     s_wires, d_wires = qml.qchem.excitations_to_wires(singles, doubles)
     wires = range(qubits)
@@ -234,6 +248,8 @@ def ee_exact(
     unit="bohr",
     state_idx=1,
     r1r2_outfile="out_r1_r2.txt",
+    hamiltonian=None,
+    qubits=None,
 ):
     """Compatibility wrapper used by existing run scripts.
 
@@ -253,6 +269,8 @@ def ee_exact(
         method=method,
         basis=basis,
         unit=unit,
+        hamiltonian=hamiltonian,
+        qubits=qubits,
     )
 
     if state_idx < 0 or state_idx >= len(eigvals):
