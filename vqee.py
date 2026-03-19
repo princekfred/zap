@@ -15,31 +15,6 @@ Implementation notes:
 """
 
 
-def _build_molecular_hamiltonian(
-    qml,
-    symbols,
-    geometry,
-    *,
-    basis,
-    method,
-    unit,
-    active_electrons,
-    active_orbitals,
-    charge,
-):
-    return qml.qchem.molecular_hamiltonian(
-        symbols,
-        geometry,
-        basis=basis,
-        method=method,
-        unit=unit,
-        charge=charge,
-        mult=1,
-        active_electrons=active_electrons,
-        active_orbitals=active_orbitals,
-    )
-
-
 def _wire0_is_msb(qml, wire_order):
     """Infer computational-basis bit ordering for the given ``wire_order``."""
     if len(wire_order) <= 1:
@@ -217,9 +192,11 @@ def gs_exact(
     max_iter=100,
     opt_method="BFGS",
     method="pyscf",
-    basis="sto-3g",
-    unit="bohr",
+    basis=None,
+    unit=None,
     amplitudes_outfile=None,
+    hamiltonian=None,
+    qubits=None,
 ):
     """Optimize a non‑Trotterized UCCSD ansatz using dense matrices.
 
@@ -252,31 +229,28 @@ def gs_exact(
             "Missing dependency 'scipy'. Install with:\n" "  python -m pip install scipy"
         ) from exc
 
-    # PennyLane's qchem helpers expect NumPy semantics (e.g., `.flatten()`).
+    if hamiltonian is None:
+        raise ValueError(
+            "`hamiltonian` is required. Internal Hamiltonian building has been disabled."
+        )
+    if basis is None or unit is None:
+        raise ValueError("`basis` and `unit` must be provided by the caller.")
+
+    H = hamiltonian
+    if qubits is None:
+        try:
+            qubits = len(H.wires)
+        except Exception as exc:
+            raise ValueError(
+                "Could not infer `qubits` from the provided Hamiltonian. Pass `qubits` explicitly."
+            ) from exc
+    n_qubits = int(qubits)
+
+    # Keep this conversion for compatibility with existing callers and downstream helpers.
     try:
         geometry = pnp.array(geometry, dtype=float, requires_grad=False)
     except TypeError:
         geometry = pnp.array(geometry, dtype=float)
-
-    try:
-        H, n_qubits = _build_molecular_hamiltonian(
-            qml,
-            symbols,
-            geometry,
-            basis=basis,
-            method=method,
-            unit=unit,
-            active_electrons=active_electrons,
-            active_orbitals=active_orbitals,
-            charge=charge,
-        )
-    except ModuleNotFoundError as exc:
-        if method == "pyscf":
-            raise ModuleNotFoundError(
-                "Failed to build the molecular Hamiltonian. For `method=\"pyscf\"`, install PySCF:\n"
-                "  python -m pip install pyscf"
-            ) from exc
-        raise
     wire_order = list(range(n_qubits))
     hf_state = qml.qchem.hf_state(active_electrons, n_qubits)
 
