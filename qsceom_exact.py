@@ -79,10 +79,10 @@ def ee_exact(
     if qubits is None:
         try:
             qubits = len(H.wires)
-        except Exception as exc:
+        except Exception as exc_info:
             raise ValueError(
                 "Could not infer `qubits` from the provided Hamiltonian. Pass `qubits` explicitly."
-            ) from exc
+            ) from exc_info
     qubits = int(qubits)
 
     try:

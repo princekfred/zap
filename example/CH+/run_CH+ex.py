@@ -9,6 +9,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 import SCF
+import casci
 import qsceom_exact
 import vqee
 
@@ -107,6 +108,7 @@ def main():
     amp_file = None if args.skip_files else str(OUTPUT_DIR / "t1_t2.txt")
     r1r2_file = None if args.skip_files else str(OUTPUT_DIR / "out_r1_r2.txt")
     qscex_ene_file = None if args.skip_files else str(OUTPUT_DIR / "qsceom_ene")
+    casci_file = None if args.skip_files else str(OUTPUT_DIR / "CASCI_output.txt")
 
     if run_scf:
         print("\n[1/3] Running SCF...")
@@ -129,6 +131,22 @@ def main():
             scf_result["converged"],
         )
 
+    shared_hamiltonian = None
+    shared_qubits = None
+    if run_vqe:
+        shared_hamiltonian, shared_qubits, casci_energies = (
+            casci.build_casci_hamiltonian_from_problem(
+                cfg,
+                casci_output_path=casci_file,
+            )
+        )
+        print(
+            "Loaded CASCI/FCI Hamiltonian from casci.py with",
+            shared_qubits,
+            "qubits.",
+        )
+        print("CASCI excited states generated:", max(len(casci_energies) - 1, 0))
+
     params = None
     if run_vqe:
         print("\n[2/3] Running exact VQE...")
@@ -143,6 +161,8 @@ def main():
             unit=cfg["unit"],
             max_iter=args.max_iter,
             amplitudes_outfile=amp_file,
+            hamiltonian=shared_hamiltonian,
+            qubits=shared_qubits,
         )
         print("Returned parameter vector length:", len(params))
 
@@ -164,6 +184,8 @@ def main():
             unit=cfg["unit"],
             state_idx=args.state_idx,
             r1r2_outfile=r1r2_file,
+            hamiltonian=shared_hamiltonian,
+            qubits=shared_qubits,
         )
         print("QSC-EOM energies (Hartree):", eig)
 

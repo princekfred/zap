@@ -9,6 +9,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 import SCF
+import casci
 import qsceom_exact
 import vqee
 
@@ -47,6 +48,8 @@ def _default_problem():
         "active_electrons": 6,
         "active_orbitals": 6,
         "charge": 0,
+        "basis": "6-31g",
+        "unit": "angstrom",
     }
 
 
@@ -108,6 +111,8 @@ def main():
     two_e_file = None if args.skip_files else str(OUTPUT_DIR / "two_elec_exact.txt")
     amp_file = None if args.skip_files else str(OUTPUT_DIR / "t1_t2_exact.txt")
     r1r2_file = None if args.skip_files else str(OUTPUT_DIR / "out_r1_r2_exact.txt")
+    qscex_ene_file = None if args.skip_files else str(OUTPUT_DIR / "qsceom_ene")
+    casci_file = None if args.skip_files else str(OUTPUT_DIR / "CASCI_output.txt")
 
     if run_scf:
         print("\n[1/3] Running SCF...")
@@ -115,8 +120,8 @@ def main():
             cfg["symbols"],
             cfg["geometry"],
             charge=cfg["charge"],
-            unit="angstrom",
-            basis="6-31g",
+            unit=cfg["unit"],
+            basis=cfg["basis"],
             active_electrons=cfg["active_electrons"],
             active_orbitals=cfg["active_orbitals"],
             count_space="active",
@@ -130,6 +135,22 @@ def main():
             scf_result["converged"],
         )
 
+    shared_hamiltonian = None
+    shared_qubits = None
+    if run_vqe:
+        shared_hamiltonian, shared_qubits, casci_energies = (
+            casci.build_casci_hamiltonian_from_problem(
+                cfg,
+                casci_output_path=casci_file,
+            )
+        )
+        print(
+            "Loaded CASCI/FCI Hamiltonian from casci.py with",
+            shared_qubits,
+            "qubits.",
+        )
+        print("CASCI excited states generated:", max(len(casci_energies) - 1, 0))
+
     params = None
     if run_vqe:
         print("\n[2/3] Running exact VQE (vqee)...")
@@ -140,10 +161,12 @@ def main():
             cfg["active_orbitals"],
             cfg["charge"],
             method=args.method,
-            basis="6-31g",
-            unit="angstrom",
+            basis=cfg["basis"],
+            unit=cfg["unit"],
             max_iter=args.max_iter,
             amplitudes_outfile=amp_file,
+            hamiltonian=shared_hamiltonian,
+            qubits=shared_qubits,
         )
         print("Returned parameter vector length:", len(params))
 
@@ -152,7 +175,7 @@ def main():
             raise RuntimeError("QSC-EOM requested without optimized parameters.")
 
         print("\n[3/3] Running exact QSC-EOM...")
-        qsceom_exact.ee_exact(
+        eig = qsceom_exact.ee_exact(
             cfg["symbols"],
             cfg["geometry"],
             cfg["active_electrons"],
@@ -161,11 +184,19 @@ def main():
             params,
             shots=args.shots,
             method=args.method,
-            basis="6-31g",
-            unit="angstrom",
+            basis=cfg["basis"],
+            unit=cfg["unit"],
             state_idx=args.state_idx,
             r1r2_outfile=r1r2_file,
+            hamiltonian=shared_hamiltonian,
+            qubits=shared_qubits,
         )
+        print("QSC-EOM energies (Hartree):", eig)
+
+        if qscex_ene_file:
+            with open(qscex_ene_file, "w", encoding="utf-8") as f:
+                for value in eig:
+                    f.write(f"{float(value)}\n")
 
 
 if __name__ == "__main__":
