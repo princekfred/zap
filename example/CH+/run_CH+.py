@@ -346,8 +346,10 @@ def main():
         if params is None:
             raise RuntimeError("QSC-EOM requested without optimized parameters.")
 
-        # First pass to collect eigenvalues.
+        # First pass to collect eigenvalues. In auto-target mode, do not write R1/R2
+        # until the 2^1Delta root is resolved.
         first_idx = 0 if target_idx is None else target_idx
+        first_r1r2_file = None if target_idx is None else r1r2_file
         print("\n[3/3] Running QSC-EOM...")
         eig = qsceom.ee_exact(
             cfg["symbols"],
@@ -361,7 +363,7 @@ def main():
             basis=cfg["basis"],
             unit=cfg["unit"],
             state_idx=first_idx,
-            r1r2_outfile=r1r2_file,
+            r1r2_outfile=first_r1r2_file,
             hamiltonian=shared_hamiltonian,
             qubits=shared_qubits,
         )
@@ -383,24 +385,27 @@ def main():
                 f"reference={ref_2_1_delta:.12f} Ha",
                 f"(A1 root {target_pair['a1_root_index']} + A2 root {target_pair['a2_root_index']})",
             )
-            # Ensure R1/R2 output corresponds to matched state.
-            if target_idx != first_idx and r1r2_file is not None:
-                eig = qsceom.ee_exact(
-                    cfg["symbols"],
-                    cfg["geometry"],
-                    cfg["active_electrons"],
-                    cfg["active_orbitals"],
-                    cfg["charge"],
-                    params,
-                    shots=args.shots,
-                    method=args.method,
-                    basis=cfg["basis"],
-                    unit=cfg["unit"],
-                    state_idx=target_idx,
-                    r1r2_outfile=r1r2_file,
-                    hamiltonian=shared_hamiltonian,
-                    qubits=shared_qubits,
-                )
+
+        # Ensure QSC-EOM is explicitly run with the resolved target state.
+        if target_idx != first_idx:
+            eig = qsceom.ee_exact(
+                cfg["symbols"],
+                cfg["geometry"],
+                cfg["active_electrons"],
+                cfg["active_orbitals"],
+                cfg["charge"],
+                params,
+                shots=args.shots,
+                method=args.method,
+                basis=cfg["basis"],
+                unit=cfg["unit"],
+                state_idx=target_idx,
+                r1r2_outfile=r1r2_file,
+                hamiltonian=shared_hamiltonian,
+                qubits=shared_qubits,
+            )
+
+        print("Using QSC-EOM excited state index:", target_idx)
 
         if target_idx < 0 or target_idx >= len(eig):
             raise ValueError(
