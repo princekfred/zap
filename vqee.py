@@ -189,7 +189,7 @@ def gs_exact(
     active_orbitals,
     charge,
     shots=None,
-    max_iter=100,
+    max_iter=500,
     opt_method="BFGS",
     method="pyscf",
     basis=None,

@@ -94,7 +94,7 @@ def gs_exact(
         )
 
     print("\nOptimal parameters:\n", list(params))
-    print("Energy minimum = ", energy)
+    print("UCCSD energy = ", energy)
 
     # Print amplitudes in exact excitation ordering (singles then doubles)
     print("\nPrinting amplitudes")
