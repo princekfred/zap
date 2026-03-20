@@ -1,6 +1,0 @@
-state_label	2^1Delta
-source	Tripples corrections.pdf (Table 1 context: CH+ at twice equilibrium bond length)
-ground_energy_hartree	-37.820655585356
-paper_state_energy_hartree	-37.357994214056
-excitation_gap_hartree	0.462661371300
-excitation_gap_eV	12.58965728

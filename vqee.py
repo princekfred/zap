@@ -190,7 +190,7 @@ def gs_exact(
     charge,
     shots=None,
     max_iter=500,
-    opt_method="BFGS",
+    opt_method="Powell",
     method="pyscf",
     basis=None,
     unit=None,
