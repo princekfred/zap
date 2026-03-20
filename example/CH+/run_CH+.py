@@ -1,4 +1,4 @@
-"""Single entrypoint for CH+ paper workflow (VQEE + exact QSC-EOM).
+"""Single entrypoint for CH+ paper workflow (VQE + QSC-EOM).
 
 Paper setup:
 - State: 2^1 Delta of CH+
@@ -18,8 +18,8 @@ if str(PROJECT_ROOT) not in sys.path:
 
 import SCF
 import casci
-import qsceom_exact
-import vqee
+import qsceom
+import vqe
 
 OUTPUT_DIR = PROJECT_ROOT / "outputs" / "CH+ paper 2_1Delta"
 HARTREE_TO_EV = 27.211386245988
@@ -127,8 +127,8 @@ def _parse_args():
         "mode",
         nargs="?",
         default="all",
-        choices=["all", "scf", "vqe", "vqee", "qsceom"],
-        help="all: SCF + vqee + exact QSC-EOM, scf: SCF only, vqe/vqee: exact VQE only, qsceom: VQE+QSC-EOM",
+        choices=["all", "scf", "vqe", "qsceom"],
+        help="all: SCF + vqe + QSC-EOM, scf: SCF only, vqe: VQE only, qsceom: VQE+QSC-EOM",
     )
     parser.add_argument(
         "--method",
@@ -146,7 +146,7 @@ def _parse_args():
         "--shots",
         default=0,
         type=int,
-        help="Accepted for compatibility (ignored by exact QSC-EOM).",
+        help="Shots used by QSC-EOM.",
     )
     parser.add_argument(
         "--state-idx",
@@ -170,7 +170,7 @@ def main():
     cfg = _default_problem()
 
     run_scf = args.mode in {"all", "scf"}
-    run_vqe = args.mode in {"all", "vqe", "vqee", "qsceom"}
+    run_vqe = args.mode in {"all", "vqe", "qsceom"}
     run_qsceom = args.mode in {"all", "qsceom"}
     target_idx = None if args.state_idx is None else int(args.state_idx)
 
@@ -235,8 +235,8 @@ def main():
 
     params = None
     if run_vqe:
-        print("\n[2/3] Running exact VQE (vqee)...")
-        params = vqee.gs_exact(
+        print("\n[2/3] Running VQE...")
+        params = vqe.gs_exact(
             cfg["symbols"],
             cfg["geometry"],
             cfg["active_electrons"],
@@ -258,8 +258,8 @@ def main():
 
         # First pass to collect eigenvalues.
         first_idx = 0 if target_idx is None else target_idx
-        print("\n[3/3] Running exact QSC-EOM...")
-        eig = qsceom_exact.ee_exact(
+        print("\n[3/3] Running QSC-EOM...")
+        eig = qsceom.ee_exact(
             cfg["symbols"],
             cfg["geometry"],
             cfg["active_electrons"],
@@ -293,7 +293,7 @@ def main():
             )
             # Ensure R1/R2 output corresponds to matched state.
             if target_idx != first_idx and r1r2_file is not None:
-                eig = qsceom_exact.ee_exact(
+                eig = qsceom.ee_exact(
                     cfg["symbols"],
                     cfg["geometry"],
                     cfg["active_electrons"],
