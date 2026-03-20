@@ -307,7 +307,7 @@ def gs_exact(
     elapsed = time.time() - t0
 
     params = res.x
-    e_min = res.fun
+    energy = res.fun
 
     print(f"Optimization time: {elapsed:.2f}s")
     print("Optimizer:", opt_method, "| success:", bool(getattr(res, "success", False)))
@@ -315,7 +315,7 @@ def gs_exact(
         print("Message:", res.message)
 
     print("\nOptimal parameters:\n", list(params))
-    print("Energy minimum = ", e_min)
+    print("USSCD energy = ", energy)
 
     _print_amplitudes(
         singles=singles,
@@ -324,7 +324,7 @@ def gs_exact(
         active_electrons=active_electrons,
         active_orbitals=active_orbitals,
         hf_energy=hf_e,
-        energy_min=e_min,
+        energy_min=energy,
         amplitudes_outfile=amplitudes_outfile,
     )
 
