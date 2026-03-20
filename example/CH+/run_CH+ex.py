@@ -476,18 +476,7 @@ def main():
                     f.write(f"reference_excited_energy_hartree\t{excited_ref:.12f}\n")
                     f.write(f"excited_state_error_hartree\t{excited_err_h:.12f}\n")
                     f.write(f"excited_state_error_eV\t{excited_err_ev:.8f}\n")
-                #if ref_delta is not None:
-                 #   ref_gap_h = float(ref_delta["second_1Delta_energy"]) - float(
-                  #      casci_energies[0]
-                    #)
-                    #ref_gap_ev = ref_gap_h * HARTREE_TO_EV
-                    #f.write(
-                        #f"reference_2_1Delta_energy_hartree\t"
-                        #f"{float(ref_delta['second_1Delta_energy']):.12f}\n"
-                    #)
-                    #f.write(f"reference_gap_hartree\t{ref_gap_h:.12f}\n")
-                    #f.write(f"reference_gap_eV\t{ref_gap_ev:.8f}\n")
-                    #f.write(f"error_vs_reference_eV\t{(gap_ev - ref_gap_ev):.8f}\n")
+               
 
         if casci_energies is not None and len(casci_energies) > target_idx:
             casci_gap_h = float(casci_energies[target_idx] - casci_energies[0])
