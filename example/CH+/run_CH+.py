@@ -418,17 +418,50 @@ def main():
         gap_h = excited_energy - ground_energy
         gap_ev = gap_h * HARTREE_TO_EV
 
+        ground_ref = None
+        excited_ref = None
+        ground_err_h = None
+        ground_err_ev = None
+        excited_err_h = None
+        excited_err_ev = None
+
+        if casci_energies is not None and len(casci_energies) > 0:
+            ground_ref = float(casci_energies[0])
+            ground_err_h = ground_energy - ground_ref
+            ground_err_ev = ground_err_h * HARTREE_TO_EV
+
+        if ref_delta is not None:
+            excited_ref = float(ref_delta["second_1Delta_energy"])
+        elif casci_energies is not None and len(casci_energies) > target_idx:
+            excited_ref = float(casci_energies[target_idx])
+
+        if excited_ref is not None:
+            excited_err_h = excited_energy - excited_ref
+            excited_err_ev = excited_err_h * HARTREE_TO_EV
+
         print(
             "CH+ 2^1Delta energy difference (Excited - Ground):",
             f"{gap_h:.12f} Hartree = {gap_ev:.6f} eV",
         )
 
-        if ref_delta is not None:
+        if ground_err_h is not None:
+            print(
+                "Ground-state error (QSC-EOM - CASCI):",
+                f"{ground_err_h:.12f} Hartree = {ground_err_ev:.6f} eV",
+            )
+
+        if excited_err_h is not None:
+            print(
+                "2^1Delta excited-state error (QSC-EOM - CASCI):",
+                f"{excited_err_h:.12f} Hartree = {excited_err_ev:.6f} eV",
+            )
+
+        if ref_delta is not None and ground_ref is not None:
             ref_gap_h = float(ref_delta["second_1Delta_energy"]) - float(casci_energies[0])
             ref_gap_ev = ref_gap_h * HARTREE_TO_EV
             err_ev = gap_ev - ref_gap_ev
             print(
-                "Paper-style excitation-energy error (QSC-EOM - CASCI ref):",
+                "excitation-energy error (QSC-EOM - CASCI ref):",
                 f"{err_ev:.6f} eV",
             )
 
@@ -445,18 +478,26 @@ def main():
                 f.write(f"excited_energy_hartree\t{excited_energy:.12f}\n")
                 f.write(f"energy_difference_hartree\t{gap_h:.12f}\n")
                 f.write(f"energy_difference_eV\t{gap_ev:.8f}\n")
-                if ref_delta is not None:
-                    ref_gap_h = float(ref_delta["second_1Delta_energy"]) - float(
-                        casci_energies[0]
-                    )
-                    ref_gap_ev = ref_gap_h * HARTREE_TO_EV
-                    f.write(
-                        f"reference_2_1Delta_energy_hartree\t"
-                        f"{float(ref_delta['second_1Delta_energy']):.12f}\n"
-                    )
-                    f.write(f"reference_gap_hartree\t{ref_gap_h:.12f}\n")
-                    f.write(f"reference_gap_eV\t{ref_gap_ev:.8f}\n")
-                    f.write(f"error_vs_reference_eV\t{(gap_ev - ref_gap_ev):.8f}\n")
+                if ground_ref is not None:
+                    f.write(f"reference_ground_energy_hartree\t{ground_ref:.12f}\n")
+                    f.write(f"ground_state_error_hartree\t{ground_err_h:.12f}\n")
+                    f.write(f"ground_state_error_eV\t{ground_err_ev:.8f}\n")
+                if excited_ref is not None:
+                    f.write(f"reference_excited_energy_hartree\t{excited_ref:.12f}\n")
+                    f.write(f"excited_state_error_hartree\t{excited_err_h:.12f}\n")
+                    f.write(f"excited_state_error_eV\t{excited_err_ev:.8f}\n")
+                #if ref_delta is not None:
+                 #   ref_gap_h = float(ref_delta["second_1Delta_energy"]) - float(
+                  #      casci_energies[0]
+                    #)
+                    #ref_gap_ev = ref_gap_h * HARTREE_TO_EV
+                    #f.write(
+                        #f"reference_2_1Delta_energy_hartree\t"
+                        #f"{float(ref_delta['second_1Delta_energy']):.12f}\n"
+                    #)
+                    #f.write(f"reference_gap_hartree\t{ref_gap_h:.12f}\n")
+                    #f.write(f"reference_gap_eV\t{ref_gap_ev:.8f}\n")
+                    #f.write(f"error_vs_reference_eV\t{(gap_ev - ref_gap_ev):.8f}\n")
 
         if casci_energies is not None and len(casci_energies) > target_idx:
             casci_gap_h = float(casci_energies[target_idx] - casci_energies[0])
