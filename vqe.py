@@ -82,7 +82,7 @@ def gs_exact(
     if max_iter < 1:
         raise ValueError("`max_iter` must be >= 1")
 
-    optimizer = qml.GradientDescentOptimizer(stepsize=0.5)
+    optimizer = qml.GradientDescentOptimizer(stepsize=0.1)
     for _ in range(max_iter):
         params, energy = optimizer.step_and_cost(
             circuit,
@@ -137,7 +137,7 @@ def gs_exact(
             f.write(f"Active electrons: {int(active_electrons)}\n")
             f.write(f"Active orbitals: {int(active_orbitals)}\n")
             f.write(f"HF energy: {float(hf_e)}\n")
-            f.write(f"Energy minimum: {float(e_min)}\n")
+            f.write(f"Energy minimum: {float(energy)}\n")
             f.write("\n")
             f.write("Operator\tAmplitude\n")
             f.write("++++++++++++++++++++++++++++++\n")
