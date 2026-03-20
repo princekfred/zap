@@ -42,10 +42,11 @@ def _as_array(coords):
 
 
 def _default_problem():
+    re = 2.13713
     symbols = ["C", "H"]
     coords = [
         [0.0, 0.0, 0.0],
-        [0.0, 0.0, 4.27426],
+        [0.0, 0.0, 2*re],
     ]
     return {
         "symbols": symbols,
@@ -379,7 +380,7 @@ def main():
             ref_2_1_delta = float(target_pair["pair_energy"])
             target_idx = int((abs(eig - ref_2_1_delta)).argmin())
             print(
-                "Matched paper 2^1Delta to QSC-EOM root:",
+                "2^1Delta to QSC-EOM root:",
                 f"state_idx={target_idx}",
                 f"state_energy={float(eig[target_idx]):.12f} Ha",
                 f"reference={ref_2_1_delta:.12f} Ha",
