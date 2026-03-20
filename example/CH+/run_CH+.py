@@ -21,7 +21,7 @@ import casci
 import qsceom
 import vqe
 
-OUTPUT_DIR = PROJECT_ROOT / "outputs" / "CH+ paper 2_1Delta"
+OUTPUT_DIR = PROJECT_ROOT / "outputs" / "CH+ Trotterized"
 HARTREE_TO_EV = 27.211386245988
 
 
