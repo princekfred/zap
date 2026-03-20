@@ -1,12 +1,3 @@
-"""Single entrypoint for CH+ paper workflow (VQE + QSC-EOM).
-
-Paper setup:
-- State: 2^1 Delta of CH+
-- Geometry: 2 * Re = 2 * 2.13713 bohr = 4.27426 bohr
-- Basis: 6-31G
-Reference: J. Chem. Theory Comput. 2024, 20, 9032-9040
-DOI: 10.1021/acs.jctc.4c01071
-"""
 
 import argparse
 import sys
@@ -21,7 +12,7 @@ import casci
 import qsceom
 import vqe
 
-OUTPUT_DIR = PROJECT_ROOT / "outputs" / "CH+ Trotterized"
+OUTPUT_DIR = PROJECT_ROOT / "outputs" /"CH+2re"/ "Trotterized"
 HARTREE_TO_EV = 27.211386245988
 
 
@@ -63,7 +54,7 @@ def _reference_2_1_delta_energy(cfg, nroots_per_component=12, tol=1e-6, singlet_
     """Return CH+ 2^1Delta reference from C2v (A1 + A2) singlet subspace.
 
     In C2v, each singlet Delta manifold appears as a near-degenerate A1/A2 pair.
-    The second such pair is the paper target 2^1Delta.
+    The second such pair is the target 2^1Delta.
     """
     try:
         import numpy as np
@@ -183,7 +174,7 @@ def _reference_2_1_delta_energy(cfg, nroots_per_component=12, tol=1e-6, singlet_
 
 def _parse_args():
     parser = argparse.ArgumentParser(
-        description="Run CH+ paper workflow from a single script."
+        description="Run CH+ workflow from a single script."
     )
     parser.add_argument(
         "mode",
@@ -216,7 +207,7 @@ def _parse_args():
         type=int,
         help=(
             "Optional QSC-EOM eigenvector index. If omitted, the script auto-matches "
-            "the paper 2^1Delta state using symmetry-resolved CASCI energies."
+            "the 2^1Delta state using symmetry-resolved CASCI energies."
         ),
     )
     parser.add_argument(
@@ -373,7 +364,7 @@ def main():
         if target_idx is None:
             if ref_delta is None:
                 raise RuntimeError(
-                    "Could not identify paper 2^1Delta reference from symmetry CASCI. "
+                    "Could not identify 2^1Delta reference from symmetry CASCI. "
                     "Please pass --state-idx explicitly."
                 )
             target_pair = ref_delta["delta_pairs"][1]
