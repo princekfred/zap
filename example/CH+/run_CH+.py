@@ -236,8 +236,8 @@ def main():
     r1r2_file = None if args.skip_files else str(OUTPUT_DIR / "r1_r2.txt")
     qscex_ene_file = None if args.skip_files else str(OUTPUT_DIR / "qsceom_ene")
     casci_file = None if args.skip_files else str(OUTPUT_DIR / "CASCI_output.txt")
-    gap_file = None if args.skip_files else str(OUTPUT_DIR / "energy_gap_2_1Delta.txt")
-    label_file = None if args.skip_files else str(OUTPUT_DIR / "state_labels_c2v.txt")
+    #gap_file = None if args.skip_files else str(OUTPUT_DIR / "energy_gap_2_1Delta.txt")
+    #label_file = None if args.skip_files else str(OUTPUT_DIR / "state_labels_c2v.txt")
 
     if run_scf:
         print("\n[1/3] Running SCF...")
