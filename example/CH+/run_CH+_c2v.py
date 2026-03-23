@@ -8,22 +8,22 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 import SCF
-import casci
-import qsceom_exact
-import vqee
+import casci_c2v as casci
+import qsceom_c2v as qsceom
+import vqe_c2v as vqe
 
-OUTPUT_DIR = PROJECT_ROOT / "outputs" /"CH+2re"/ "CH+ Full operator"
+OUTPUT_DIR = PROJECT_ROOT / "outputs" / "CH+2re" / "C2v Trotterized"
 HARTREE_TO_EV = 27.211386245988
 
 
 def _as_array(coords):
     try:
-        from pennylane import numpy as pnp
+        from pennylane import numpy as np
 
         try:
-            return pnp.array(coords, dtype=float, requires_grad=False)
+            return np.array(coords, dtype=float, requires_grad=False)
         except TypeError:
-            return pnp.array(coords, dtype=float)
+            return np.array(coords, dtype=float)
     except ModuleNotFoundError:
         try:
             import numpy as np
@@ -211,6 +211,22 @@ def _parse_args():
         ),
     )
     parser.add_argument(
+        "--target-irrep",
+        default="A1+A2",
+        help=(
+            "C2v irrep sector(s) for qsceom_c2v (examples: A1, A2, B1, B2, A1+A2). "
+            "Default A1+A2 matches the Delta subspace search."
+        ),
+    )
+    parser.add_argument(
+        "--vqe-target-irrep",
+        default="A1",
+        help=(
+            "C2v irrep sector(s) for vqe_c2v ansatz construction. "
+            "This must match qsceom_c2v ansatz_target_irrep."
+        ),
+    )
+    parser.add_argument(
         "--skip-files",
         action="store_true",
         help="Do not write fock/two-electron/R1R2/energy output files.",
@@ -223,7 +239,7 @@ def main():
     cfg = _default_problem()
 
     run_scf = args.mode in {"all", "scf"}
-    run_vqe = args.mode in {"all", "vqee", "qsceom"}
+    run_vqe = args.mode in {"all", "vqe", "qsceom"}
     run_qsceom = args.mode in {"all", "qsceom"}
     target_idx = None if args.state_idx is None else int(args.state_idx)
 
@@ -236,7 +252,7 @@ def main():
     r1r2_file = None if args.skip_files else str(OUTPUT_DIR / "r1_r2.txt")
     qscex_ene_file = None if args.skip_files else str(OUTPUT_DIR / "qsceom_ene")
     casci_file = None if args.skip_files else str(OUTPUT_DIR / "CASCI_output.txt")
-    gap_file = None if args.skip_files else str(OUTPUT_DIR / "energy_gap_2_1Delta.txt")
+    #gap_file = None if args.skip_files else str(OUTPUT_DIR / "energy_gap_2_1Delta.txt")
     label_file = None if args.skip_files else str(OUTPUT_DIR / "state_labels_c2v.txt")
 
     if run_scf:
@@ -318,7 +334,8 @@ def main():
     params = None
     if run_vqe:
         print("\n[2/3] Running VQE...")
-        params = vqee.gs_exact(
+        print("VQE ansatz C2v irrep sector(s):", args.vqe_target_irrep)
+        params = vqe.gs_exact(
             cfg["symbols"],
             cfg["geometry"],
             cfg["active_electrons"],
@@ -331,6 +348,7 @@ def main():
             amplitudes_outfile=amp_file,
             hamiltonian=shared_hamiltonian,
             qubits=shared_qubits,
+            target_irrep=args.vqe_target_irrep,
         )
         print("Returned parameter vector length:", len(params))
 
@@ -343,7 +361,9 @@ def main():
         first_idx = 0 if target_idx is None else target_idx
         first_r1r2_file = None if target_idx is None else r1r2_file
         print("\n[3/3] Running QSC-EOM...")
-        eig = qsceom_exact.ee_exact(
+        print("C2v target irrep sector(s):", args.target_irrep)
+        print("QSC-EOM ansatz irrep sector(s):", args.vqe_target_irrep)
+        eig = qsceom.ee_exact(
             cfg["symbols"],
             cfg["geometry"],
             cfg["active_electrons"],
@@ -358,12 +378,15 @@ def main():
             r1r2_outfile=first_r1r2_file,
             hamiltonian=shared_hamiltonian,
             qubits=shared_qubits,
+            target_irrep=args.target_irrep,
+            ansatz_target_irrep=args.vqe_target_irrep,
         )
         print("QSC-EOM energies (Hartree):", eig)
 
         if target_idx is None:
             if ref_delta is None:
                 raise RuntimeError(
+                    "Could not identify 2^1Delta reference from symmetry CASCI. "
                     "Please pass --state-idx explicitly."
                 )
             target_pair = ref_delta["delta_pairs"][1]
@@ -379,7 +402,7 @@ def main():
 
         # Ensure QSC-EOM is explicitly run with the resolved target state.
         if target_idx != first_idx:
-            eig = qsceom_exact.ee_exact(
+            eig = qsceom.ee_exact(
                 cfg["symbols"],
                 cfg["geometry"],
                 cfg["active_electrons"],
@@ -394,6 +417,8 @@ def main():
                 r1r2_outfile=r1r2_file,
                 hamiltonian=shared_hamiltonian,
                 qubits=shared_qubits,
+                target_irrep=args.target_irrep,
+                ansatz_target_irrep=args.vqe_target_irrep,
             )
 
         print("Using QSC-EOM excited state index:", target_idx)
@@ -460,23 +485,35 @@ def main():
                 for value in eig:
                     f.write(f"{float(value)}\n")
 
-        if gap_file:
-            with open(gap_file, "w", encoding="utf-8") as f:
-                f.write("state_label\t2^1Delta\n")
-                f.write(f"state_idx\t{target_idx}\n")
-                f.write(f"ground_energy_hartree\t{ground_energy:.12f}\n")
-                f.write(f"excited_energy_hartree\t{excited_energy:.12f}\n")
-                f.write(f"energy_difference_hartree\t{gap_h:.12f}\n")
-                f.write(f"energy_difference_eV\t{gap_ev:.8f}\n")
-                if ground_ref is not None:
-                    f.write(f"reference_ground_energy_hartree\t{ground_ref:.12f}\n")
-                    f.write(f"ground_state_error_hartree\t{ground_err_h:.12f}\n")
-                    f.write(f"ground_state_error_eV\t{ground_err_ev:.8f}\n")
-                if excited_ref is not None:
-                    f.write(f"reference_excited_energy_hartree\t{excited_ref:.12f}\n")
-                    f.write(f"excited_state_error_hartree\t{excited_err_h:.12f}\n")
-                    f.write(f"excited_state_error_eV\t{excited_err_ev:.8f}\n")
-               
+        #if gap_file:
+            #with open(gap_file, "w", encoding="utf-8") as f:
+               # f.write("state_label\t2^1Delta\n")
+               # f.write(f"state_idx\t{target_idx}\n")
+               # f.write(f"ground_energy_hartree\t{ground_energy:.12f}\n")
+               # f.write(f"excited_energy_hartree\t{excited_energy:.12f}\n")
+               # f.write(f"energy_difference_hartree\t{gap_h:.12f}\n")
+               # f.write(f"energy_difference_eV\t{gap_ev:.8f}\n")
+                #if ground_ref is not None:
+                   # f.write(f"reference_ground_energy_hartree\t{ground_ref:.12f}\n")
+                   # f.write(f"ground_state_error_hartree\t{ground_err_h:.12f}\n")
+                   # f.write(f"ground_state_error_eV\t{ground_err_ev:.8f}\n")
+                #if excited_ref is not None:
+                   # f.write(f"reference_excited_energy_hartree\t{excited_ref:.12f}\n")
+                   # f.write(f"excited_state_error_hartree\t{excited_err_h:.12f}\n")
+                   # f.write(f"excited_state_error_eV\t{excited_err_ev:.8f}\n")
+        #Not part
+                    #if ref_delta is not None:
+                 #   ref_gap_h = float(ref_delta["second_1Delta_energy"]) - float(
+                  #      casci_energies[0]
+                    #)
+                    #ref_gap_ev = ref_gap_h * HARTREE_TO_EV
+                    #f.write(
+                        #f"reference_2_1Delta_energy_hartree\t"
+                        #f"{float(ref_delta['second_1Delta_energy']):.12f}\n"
+                    #)
+                    #f.write(f"reference_gap_hartree\t{ref_gap_h:.12f}\n")
+                    #f.write(f"reference_gap_eV\t{ref_gap_ev:.8f}\n")
+                    #f.write(f"error_vs_reference_eV\t{(gap_ev - ref_gap_ev):.8f}\n")
 
         if casci_energies is not None and len(casci_energies) > target_idx:
             casci_gap_h = float(casci_energies[target_idx] - casci_energies[0])
