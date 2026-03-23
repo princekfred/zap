@@ -12,7 +12,7 @@ import casci
 import qsceom
 import vqe
 
-OUTPUT_DIR = PROJECT_ROOT / "outputs" /"CH+2re"/ "Trotterized"
+OUTPUT_DIR = PROJECT_ROOT / "outputs" /"CH+2re"/ "CH+ Trotterized"
 HARTREE_TO_EV = 27.211386245988
 
 
@@ -237,7 +237,7 @@ def main():
     qscex_ene_file = None if args.skip_files else str(OUTPUT_DIR / "qsceom_ene")
     casci_file = None if args.skip_files else str(OUTPUT_DIR / "CASCI_output.txt")
     #gap_file = None if args.skip_files else str(OUTPUT_DIR / "energy_gap_2_1Delta.txt")
-    #label_file = None if args.skip_files else str(OUTPUT_DIR / "state_labels_c2v.txt")
+    label_file = None if args.skip_files else str(OUTPUT_DIR / "state_labels_c2v.txt")
 
     if run_scf:
         print("\n[1/3] Running SCF...")
@@ -461,23 +461,24 @@ def main():
                 for value in eig:
                     f.write(f"{float(value)}\n")
 
-        if gap_file:
-            with open(gap_file, "w", encoding="utf-8") as f:
-                f.write("state_label\t2^1Delta\n")
-                f.write(f"state_idx\t{target_idx}\n")
-                f.write(f"ground_energy_hartree\t{ground_energy:.12f}\n")
-                f.write(f"excited_energy_hartree\t{excited_energy:.12f}\n")
-                f.write(f"energy_difference_hartree\t{gap_h:.12f}\n")
-                f.write(f"energy_difference_eV\t{gap_ev:.8f}\n")
-                if ground_ref is not None:
-                    f.write(f"reference_ground_energy_hartree\t{ground_ref:.12f}\n")
-                    f.write(f"ground_state_error_hartree\t{ground_err_h:.12f}\n")
-                    f.write(f"ground_state_error_eV\t{ground_err_ev:.8f}\n")
-                if excited_ref is not None:
-                    f.write(f"reference_excited_energy_hartree\t{excited_ref:.12f}\n")
-                    f.write(f"excited_state_error_hartree\t{excited_err_h:.12f}\n")
-                    f.write(f"excited_state_error_eV\t{excited_err_ev:.8f}\n")
-                #if ref_delta is not None:
+        #if gap_file:
+            #with open(gap_file, "w", encoding="utf-8") as f:
+               # f.write("state_label\t2^1Delta\n")
+               # f.write(f"state_idx\t{target_idx}\n")
+               # f.write(f"ground_energy_hartree\t{ground_energy:.12f}\n")
+               # f.write(f"excited_energy_hartree\t{excited_energy:.12f}\n")
+               # f.write(f"energy_difference_hartree\t{gap_h:.12f}\n")
+               # f.write(f"energy_difference_eV\t{gap_ev:.8f}\n")
+                #if ground_ref is not None:
+                   # f.write(f"reference_ground_energy_hartree\t{ground_ref:.12f}\n")
+                   # f.write(f"ground_state_error_hartree\t{ground_err_h:.12f}\n")
+                   # f.write(f"ground_state_error_eV\t{ground_err_ev:.8f}\n")
+                #if excited_ref is not None:
+                   # f.write(f"reference_excited_energy_hartree\t{excited_ref:.12f}\n")
+                   # f.write(f"excited_state_error_hartree\t{excited_err_h:.12f}\n")
+                   # f.write(f"excited_state_error_eV\t{excited_err_ev:.8f}\n")
+        #Not part
+                    #if ref_delta is not None:
                  #   ref_gap_h = float(ref_delta["second_1Delta_energy"]) - float(
                   #      casci_energies[0]
                     #)

@@ -12,7 +12,7 @@ import casci
 import qsceom_exact
 import vqee
 
-OUTPUT_DIR = PROJECT_ROOT / "outputs" /"CH+2re"/ "Full operator"
+OUTPUT_DIR = PROJECT_ROOT / "outputs" /"CH+2re"/ "CH+ Full operator"
 HARTREE_TO_EV = 27.211386245988
 
 
