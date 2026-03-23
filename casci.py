@@ -100,7 +100,7 @@ def build_casci_hamiltonian(
 
     mc.fcisolver.nroots = n_roots
     energies = np.atleast_1d(mc.kernel()[0]).astype(float)
-    excited = energies[1:]
+    excited = energies[0:]
 
     if casci_output_path:
         out_path = Path(casci_output_path)
