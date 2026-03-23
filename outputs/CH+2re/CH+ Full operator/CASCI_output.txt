@@ -1,5 +1,6 @@
 # converged_scf_energy_hartree -37.726907678846
 # casci_excited_state_energies_hartree
+-37.820655585356
 -37.790590055298
 -37.790590055298
 -37.777116552839
