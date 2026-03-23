@@ -79,12 +79,6 @@ def _parse_args():
         help="QSC-EOM shots (kept for compatibility; exact routine ignores nonzero).",
     )
     parser.add_argument(
-        "--state-idx",
-        default=1,
-        type=int,
-        help="QSC-EOM eigenvector index used for R1/R2 output.",
-    )
-    parser.add_argument(
         "--skip-files",
         action="store_true",
         help="Do not write fock/two-electron/R1R2/QSC-EOM-energy output files.",
@@ -180,7 +174,6 @@ def main():
             method=args.method,
             basis=cfg["basis"],
             unit=cfg["unit"],
-            state_idx=args.state_idx,
             r1r2_outfile=r1r2_file,
             hamiltonian=shared_hamiltonian,
             qubits=shared_qubits,
