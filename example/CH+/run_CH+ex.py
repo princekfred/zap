@@ -265,11 +265,10 @@ def main():
     casci_energies = None
     ref_delta = None
     if run_vqe:
-        n_excited_for_casci = max(target_idx, 1) if target_idx is not None else 40
         shared_hamiltonian, shared_qubits, casci_energies = (
             casci.build_casci_hamiltonian_from_problem(
                 cfg,
-                n_excited=n_excited_for_casci,
+                n_excited=None,  # request full CASCI root list
                 casci_output_path=casci_file,
             )
         )
