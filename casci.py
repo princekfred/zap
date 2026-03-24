@@ -100,16 +100,15 @@ def build_casci_hamiltonian(
 
     mc.fcisolver.nroots = n_roots
     energies = np.atleast_1d(mc.kernel()[0]).astype(float)
-    excited = energies[0:]
 
     if casci_output_path:
         out_path = Path(casci_output_path)
         out_path.parent.mkdir(parents=True, exist_ok=True)
         header = (
             f"converged_scf_energy_hartree {float(mf.e_tot):.12f}\n"
-            "casci_excited_state_energies_hartree"
+            "casci_state_energies_hartree"
         )
-        np.savetxt(out_path, excited, fmt="%.12f", header=header, comments="# ")
+        np.savetxt(out_path, energies, fmt="%.12f", header=header, comments="# ")
 
     h1_cas, core_energy = mc.get_h1cas()
     h2_cas = ao2mo.restore(1, mc.get_h2cas(), ncas)
