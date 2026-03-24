@@ -234,7 +234,7 @@ def main():
     two_e_file = None if args.skip_files else str(OUTPUT_DIR / "two_elec.txt")
     amp_file = None if args.skip_files else str(OUTPUT_DIR / "t1_t2.txt")
     r1r2_file = None if args.skip_files else str(OUTPUT_DIR / "r1_r2.txt")
-    qscex_ene_file = None if args.skip_files else str(OUTPUT_DIR / "qsceom_ene")
+    qscex_ene_file = None if args.skip_files else str(OUTPUT_DIR / "qsceom_energy")
     casci_file = None if args.skip_files else str(OUTPUT_DIR / "CASCI_output.txt")
     gap_file = None if args.skip_files else str(OUTPUT_DIR / "energy_gap_2_1Delta.txt")
     label_file = None if args.skip_files else str(OUTPUT_DIR / "state_labels_c2v.txt")

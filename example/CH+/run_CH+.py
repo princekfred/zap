@@ -109,7 +109,7 @@ def main():
     two_e_file = None if args.skip_files else str(OUTPUT_DIR / "two_elec.txt")
     amp_file = None if args.skip_files else str(OUTPUT_DIR / "t1_t2.txt")
     r1r2_file = None if args.skip_files else str(OUTPUT_DIR / "r1_r2.txt")
-    qscex_ene_file = None if args.skip_files else str(OUTPUT_DIR / "qsceom_ene")
+    qscex_ene_file = None if args.skip_files else str(OUTPUT_DIR / "qsceom_energy")
     casci_file = None if args.skip_files else str(OUTPUT_DIR / "CASCI_output.txt")
     if run_scf:
         print("\n[1/3] Running SCF...")
