@@ -257,14 +257,9 @@ def main():
                 unit=cfg["unit"],
                 point_group="C2v",
             )
-            dominant_irrep = symm_info["dominant_irrep"]
-            weights_text = symm.format_weights(symm_info["weights_by_irrep"])
-            print(
-                f"QSC-EOM symmetry for state[{target_idx}]:",
-                f"dominant irrep = {dominant_irrep}",
+            dominant_irrep = symm.print_sym_info_old_format(
+                symm_info["weights_by_irrep"], symm_info["groupname"]
             )
-            if weights_text:
-                print("Symmetry weights:", weights_text)
 
             if qsc_symm_file:
                 with open(qsc_symm_file, "w", encoding="utf-8") as f:

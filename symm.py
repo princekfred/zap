@@ -169,3 +169,24 @@ def format_weights(weights_by_irrep: dict[str, float]) -> str:
     items = sorted(weights_by_irrep.items(), key=lambda item: (-item[1], item[0]))
     return ", ".join(f"{ir}:{wt:.6f}" for ir, wt in items)
 
+
+def print_sym_info_old_format(weights_by_irrep: dict[str, float], groupname: str) -> str:
+    """Print symmetry decomposition in the legacy format used by `print_sym_info`."""
+    from pyscf import symm as pyscf_symm
+
+    weights = {
+        int(pyscf_symm.irrep_name2id(groupname, ir_name)): float(weight)
+        for ir_name, weight in weights_by_irrep.items()
+    }
+
+    total = sum(weights.values())
+    print(weights.items())
+    print("\n=== Symmetry Decomposition ===")
+    for ir, w in sorted(weights.items(), key=lambda x: -x[1]):
+        print(ir)
+        print(f"{pyscf_symm.irrep_id2name(groupname, ir):9s} : {w/total:.4f}")
+    print(groupname)
+    dominant = max(weights, key=weights.get)
+    info = pyscf_symm.irrep_id2name(groupname, dominant)
+    print("\nDominant symmetry:", pyscf_symm.irrep_id2name(groupname, dominant))
+    return str(info)
