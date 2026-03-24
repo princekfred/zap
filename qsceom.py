@@ -239,6 +239,7 @@ def ee_exact(
     r1r2_outfile="out_r1_r2.txt",
     hamiltonian=None,
     qubits=None,
+    return_vector=False,
 ):
     """Compatibility wrapper used by existing run scripts.
 
@@ -290,4 +291,6 @@ def ee_exact(
             f.write("\n")
 
     print("QSC-EOM eigenvalues:\n", eigvals)
+    if return_vector:
+        return eigvals, vector, det_list
     return eigvals

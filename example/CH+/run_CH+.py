@@ -10,6 +10,7 @@ if str(PROJECT_ROOT) not in sys.path:
 import SCF
 import casci
 import qsceom
+import symm
 import vqe
 
 OUTPUT_DIR = PROJECT_ROOT / "outputs" /"CH+2re"/ "CH+ Trotterized"
@@ -111,6 +112,7 @@ def main():
     r1r2_file = None if args.skip_files else str(OUTPUT_DIR / "r1_r2.txt")
     qscex_ene_file = None if args.skip_files else str(OUTPUT_DIR / "qsceom_energy")
     casci_file = None if args.skip_files else str(OUTPUT_DIR / "CASCI_output.txt")
+    qsc_symm_file = None if args.skip_files else str(OUTPUT_DIR / "qsceom_symmetry.txt")
     if run_scf:
         print("\n[1/3] Running SCF...")
         scf_result = SCF.run_scf(
@@ -174,7 +176,7 @@ def main():
             raise RuntimeError("QSC-EOM requested without optimized parameters.")
 
         print("\n[3/3] Running QSC-EOM...")
-        eig = qsceom.ee_exact(
+        eig, eigvec, det_list = qsceom.ee_exact(
             cfg["symbols"],
             cfg["geometry"],
             cfg["active_electrons"],
@@ -189,6 +191,7 @@ def main():
             r1r2_outfile=r1r2_file,
             hamiltonian=shared_hamiltonian,
             qubits=shared_qubits,
+            return_vector=True,
         )
         print("QSC-EOM energies (Hartree):", eig)
 
@@ -239,6 +242,44 @@ def main():
                 f"state[{target_idx}] excited-state error (QSC-EOM - CASCI):",
                 f"{excited_err_h:.12f} Hartree = {excited_err_ev:.6f} eV",
             )
+
+        # Symmetry decomposition of the selected QSC-EOM eigenvector R.
+        try:
+            symm_info = symm.analyze_qsceom_eigenvector(
+                eigvec,
+                det_list,
+                symbols=cfg["symbols"],
+                geometry=cfg["geometry"],
+                active_electrons=cfg["active_electrons"],
+                active_orbitals=cfg["active_orbitals"],
+                charge=cfg["charge"],
+                basis=cfg["basis"],
+                unit=cfg["unit"],
+                point_group="C2v",
+            )
+            dominant_irrep = symm_info["dominant_irrep"]
+            weights_text = symm.format_weights(symm_info["weights_by_irrep"])
+            print(
+                f"QSC-EOM symmetry for state[{target_idx}]:",
+                f"dominant irrep = {dominant_irrep}",
+            )
+            if weights_text:
+                print("Symmetry weights:", weights_text)
+
+            if qsc_symm_file:
+                with open(qsc_symm_file, "w", encoding="utf-8") as f:
+                    f.write("point_group\tC2v\n")
+                    f.write(f"state_idx\t{target_idx}\n")
+                    f.write(f"state_energy_hartree\t{float(eig[target_idx]):.12f}\n")
+                    f.write(f"dominant_irrep\t{dominant_irrep}\n")
+                    f.write("weights_by_irrep\n")
+                    for ir, wt in sorted(
+                        symm_info["weights_by_irrep"].items(),
+                        key=lambda item: (-item[1], item[0]),
+                    ):
+                        f.write(f"{ir}\t{wt:.12f}\n")
+        except Exception as exc:
+            print("Symmetry analysis skipped:", exc)
 
         if qscex_ene_file:
             with open(qscex_ene_file, "w", encoding="utf-8") as f:

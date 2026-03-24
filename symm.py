@@ -1,175 +1,171 @@
-import numpy as np
-from pyscf import gto, scf, symm
+"""Symmetry analysis helpers for QSC-EOM determinant-space eigenvectors."""
 
-###########################################
-# 1. Drive the symmetry analyzer code
-# mol - pyscf molecular object
-# mf  - pyscf mean-field object
-# R   - q-sc-EOM excitation eigenvector
-# returns: irrep (e.g. "A1", "B1" etc.) 
-#                     contributing the most
-#                     to the excitation. Will
-#                     print this prior to 
-#                     excitation energy in 
-#                     'qsc_ener'
-###########################################
-###########################################
-##########################################
-def symmetry_driver(mol,mf,R):
-    # Get orbital irreps
-    mo_irreps = symm.label_orb_symm(
-        mol,
-        mol.irrep_name,
-        mol.symm_orb,
-        mf.mo_coeff
+from __future__ import annotations
+
+from typing import Sequence
+
+
+def _normalize_irrep_name(name: str) -> str:
+    value = str(name).strip().upper()
+    aliases = {
+        "A_1": "A1",
+        "A_2": "A2",
+        "B_1": "B1",
+        "B_2": "B2",
+    }
+    return aliases.get(value, value)
+
+
+def _mul_irreps_by_xor(irrep_ids: Sequence[int]) -> int:
+    if not irrep_ids:
+        raise ValueError("irrep_ids must not be empty.")
+    acc = int(irrep_ids[0])
+    for ir in irrep_ids[1:]:
+        acc ^= int(ir)
+    return int(acc)
+
+
+def build_active_space_irreps(
+    symbols,
+    geometry,
+    *,
+    charge,
+    basis,
+    unit,
+    active_electrons,
+    active_orbitals,
+    point_group="C2v",
+):
+    """Return `(groupname, active_orbital_irreps)` from symmetry RHF."""
+    try:
+        import numpy as np
+        from pyscf import gto, scf, symm as pyscf_symm
+    except ModuleNotFoundError as exc:
+        raise ModuleNotFoundError(
+            "Missing dependency for symmetry analysis. Install with:\n"
+            "  python -m pip install numpy pyscf"
+        ) from exc
+
+    coords = np.asarray(geometry, dtype=float)
+    if coords.ndim != 2 or coords.shape[1] != 3:
+        raise ValueError("geometry must have shape (n_atoms, 3)")
+    if len(symbols) != coords.shape[0]:
+        raise ValueError("len(symbols) must match geometry rows")
+
+    mol = gto.Mole()
+    mol.atom = [[symbols[i], coords[i].tolist()] for i in range(len(symbols))]
+    mol.basis = basis
+    mol.charge = int(charge)
+    mol.unit = unit
+    mol.symmetry = str(point_group)
+    mol.build()
+
+    mf = scf.RHF(mol)
+    mf.max_cycle = 200
+    mf.conv_tol = 1e-9
+    mf.kernel()
+    if not mf.converged:
+        raise RuntimeError("Symmetry RHF did not converge while building orbital irreps.")
+
+    ncas = int(active_orbitals)
+    nelecas = int(active_electrons)
+    inactive_electrons = int(mol.nelectron) - nelecas
+    if inactive_electrons < 0:
+        raise ValueError("active_electrons exceeds total electron count")
+    if inactive_electrons % 2 != 0:
+        raise ValueError("Odd inactive electron count is incompatible with RHF slicing")
+    ncore = inactive_electrons // 2
+
+    active_coeff = mf.mo_coeff[:, ncore : ncore + ncas]
+    if active_coeff.shape[1] != ncas:
+        raise ValueError("Active-space window exceeds available RHF orbitals")
+
+    orb_syms = pyscf_symm.label_orb_symm(mol, mol.irrep_name, mol.symm_orb, active_coeff)
+    active_irreps = [_normalize_irrep_name(name) for name in orb_syms]
+    return str(mol.groupname), active_irreps
+
+
+def analyze_qsceom_eigenvector(
+    vector,
+    det_list,
+    *,
+    symbols,
+    geometry,
+    active_electrons,
+    active_orbitals,
+    charge,
+    basis,
+    unit,
+    point_group="C2v",
+    amp_cutoff=1e-10,
+):
+    """Decompose a QSC-EOM eigenvector into symmetry weights by determinant."""
+    try:
+        import numpy as np
+        from pyscf import symm as pyscf_symm
+    except ModuleNotFoundError as exc:
+        raise ModuleNotFoundError(
+            "Missing dependency for symmetry analysis. Install with:\n"
+            "  python -m pip install numpy pyscf"
+        ) from exc
+
+    vec = np.asarray(vector)
+    if vec.ndim != 1:
+        raise ValueError("vector must be 1D")
+    if len(vec) != len(det_list):
+        raise ValueError(f"len(vector)={len(vec)} does not match len(det_list)={len(det_list)}")
+
+    groupname, active_irreps = build_active_space_irreps(
+        symbols,
+        geometry,
+        charge=charge,
+        basis=basis,
+        unit=unit,
+        active_electrons=active_electrons,
+        active_orbitals=active_orbitals,
+        point_group=point_group,
     )
-    
-    # Convert to string labels (e.g. A1, B2, etc.)
-    irrep_labels = mo_irreps
-    
-    nocc = mol.nelectron // 2
-    nmo = len(irrep_labels)
-    nvir = nmo - nocc
-    
-    # Decompose the R vector into R1 and R2 components 
-    # for later post-processing
-    r1 = R[:nocc*nvir]
-    r2 = R[nocc*nvir:]
-    R1 = r1.reshape((nocc,nvir))
-    R2 = r2.reshape((nocc,nocc,nvir,nvir))
 
-    #R1 = np.random.rand(nocc, nvir)
-    #R2 = np.random.rand(nocc, nocc, nvir, nvir)
-    weights = get_sym_weights(R1,R2,irrep_labels,nocc,nvir,mol)
-
-    # Get string of dominant irrep
-    dominant_irrep = print_sym_info(weights,mol)
-    return dominant_irrep
-
-
-############################################
-# Irrep multiplication helpers
-############################################
-
-def multiply_irreps(mol, ir1, ir2):
-    """Return product irrep"""
-    return ir1 ^ ir2 #symm.direct_prod( ir1, ir2)
-
-def multiply_many(mol, irreps):
-    """Multiply multiple irreps"""
-    result = irreps[0]
-    for ir in irreps[1:]:
-        result ^= ir#= multiply_irreps(mol, result, ir)
-    return result
-
-############################################
-# 5. Accumulate symmetry weights
-############################################
-
-def get_sym_weights(R1,R2,irrep_labels,nocc,nvir,mol):
     weights = {}
-    
-    # --- R1 contributions ---
-    for i in range(nocc):
-        for a in range(nvir):
-            amp = R1[i, a]
-            if abs(amp) < 1e-6:
-                continue
-    
-            ir_i = irrep_labels[i]
-            ir_a = irrep_labels[nocc + a]
-            print(ir_a)
-            tmp_iri = symm.irrep_name2id(mol.groupname,ir_i)
-            tmp_ira = symm.irrep_name2id(mol.groupname,ir_a)
-            print(tmp_iri,tmp_ira)
-            ir_total = multiply_irreps(mol, tmp_ira, tmp_iri)
-    
-            weights[ir_total] = weights.get(ir_total, 0.0) + abs(amp)**2
-    
-    # --- R2 contributions ---
-    for i in range(nocc):
-        for j in range(nocc):
-            for a in range(nvir):
-                for b in range(nvir):
-                    amp = R2[i, j, a, b]
-                    if abs(amp) < 1e-6:
-                        continue
-    
-                    irreps = [
-                        symm.irrep_name2id(mol.groupname,irrep_labels[nocc + a]),
-                        symm.irrep_name2id(mol.groupname,irrep_labels[nocc + b]),
-                        symm.irrep_name2id(mol.groupname,irrep_labels[i]),
-                        symm.irrep_name2id(mol.groupname,irrep_labels[j])
-                    ]
-    
-                    ir_total = multiply_many(mol, irreps)
-    
-                    weights[ir_total] = weights.get(ir_total, 0.0) + abs(amp)**2
-   
-    return weights
+    total = 0.0
+    for coeff, det in zip(vec, det_list):
+        if abs(coeff) < float(amp_cutoff):
+            continue
+
+        det_irrep_ids = []
+        for spin_orb in det:
+            spatial = int(spin_orb) // 2
+            if spatial < 0 or spatial >= len(active_irreps):
+                raise ValueError(
+                    f"Spin orbital index {spin_orb} maps to spatial index {spatial}, "
+                    f"outside active range [0, {len(active_irreps)-1}]"
+                )
+            det_irrep_ids.append(pyscf_symm.irrep_name2id(groupname, active_irreps[spatial]))
+
+        ir_id = _mul_irreps_by_xor(det_irrep_ids)
+        ir_name = str(pyscf_symm.irrep_id2name(groupname, ir_id))
+        w = float(abs(coeff) ** 2)
+        weights[ir_name] = weights.get(ir_name, 0.0) + w
+        total += w
+
+    if total > 0.0:
+        for ir in list(weights.keys()):
+            weights[ir] = weights[ir] / total
+        dominant = max(weights, key=weights.get)
+    else:
+        dominant = "unknown"
+
+    return {
+        "groupname": groupname,
+        "active_orbital_irreps": active_irreps,
+        "weights_by_irrep": weights,
+        "dominant_irrep": dominant,
+    }
 
 
-############################################
-# 6. Normalize and print
-############################################
-def print_sym_info(weights,mol):
-    total = sum(weights.values())
-    print(weights.items())
-    print("\n=== Symmetry Decomposition ===")
-    for ir, w in sorted(weights.items(), key=lambda x: -x[1]):
-        print(ir)
-        print(f"{symm.irrep_id2name(mol.groupname,ir):9s} : {w/total:.4f}")
-    print(mol.groupname)
-    dominant = max(weights, key=weights.get)
-    info = symm.irrep_id2name(mol.groupname,dominant)
-    print("\nDominant symmetry:", symm.irrep_id2name(mol.groupname,dominant))
-    return info
-
-
-
-############################################
-# 0. Build molecule with symmetry
-############################################
-
-mol = gto.M(
-    atom="O 0 0 0; O 0 0 1.1",
-    basis="cc-pvdz",
-    spin=2,
-    symmetry='D2h'
-)
-
-mf = scf.RHF(mol)
-mf.kernel()
-
-##################################
-##################################
-# This info is meant to simply drive our
-# symmetry routines; can/will be omitted
-# after integration
-#################################
-mo_irreps = symm.label_orb_symm(
-    mol,
-    mol.irrep_name,
-    mol.symm_orb,
-    mf.mo_coeff
-)
-nocc = mol.nelectron // 2
-nmo = len(mo_irreps)
-nvir = nmo - nocc
-
-R1 = np.random.rand(nocc, nvir)
-R2 = np.random.rand(nocc, nocc, nvir, nvir)
-R = np.concatenate([R1.ravel(), R2.ravel()])
-
-
-
-###########################################
-# 0a. Send ***ONE*** q-sc-EOM eigenvector to 
-#     "symmetry_driver" at a time. Returns
-#     the irrep dominating that particular 
-#     excitation
-##########################################
-irrep_test = symmetry_driver(mol,mf,R)
-
-print("Outside logic result:", irrep_test)
+def format_weights(weights_by_irrep: dict[str, float]) -> str:
+    if not weights_by_irrep:
+        return ""
+    items = sorted(weights_by_irrep.items(), key=lambda item: (-item[1], item[0]))
+    return ", ".join(f"{ir}:{wt:.6f}" for ir, wt in items)
 
