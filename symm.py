@@ -170,7 +170,7 @@ def format_weights(weights_by_irrep: dict[str, float]) -> str:
     return ", ".join(f"{ir}:{wt:.6f}" for ir, wt in items)
 
 
-def print_sym_info_old_format(weights_by_irrep: dict[str, float], groupname: str) -> str:
+def print_sym_info_(weights_by_irrep: dict[str, float], groupname: str) -> str:
     """Print symmetry decomposition in the legacy format used by `print_sym_info`."""
     from pyscf import symm as pyscf_symm
 

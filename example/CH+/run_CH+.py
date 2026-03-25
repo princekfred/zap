@@ -257,7 +257,7 @@ def main():
                 unit=cfg["unit"],
                 point_group="C2v",
             )
-            dominant_irrep = symm.print_sym_info_old_format(
+            dominant_irrep = symm.print_sym_info_(
                 symm_info["weights_by_irrep"], symm_info["groupname"]
             )
 
