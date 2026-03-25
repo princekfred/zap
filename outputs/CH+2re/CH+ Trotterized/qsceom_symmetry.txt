@@ -1,7 +1,10 @@
-point_group	C2v
-state_idx	1
-state_energy_hartree	-37.786130096191
-dominant_irrep	B2
-weights_by_irrep
-B2	1.000000000000
-B1	0.000000000000
+dict_items([(3, 1.0), (2, 0.0)])
+
+=== Symmetry Decomposition ===
+3
+B2        : 1.0000
+2
+B1        : 0.0000
+C2v
+
+Dominant symmetry: B2

@@ -170,8 +170,8 @@ def format_weights(weights_by_irrep: dict[str, float]) -> str:
     return ", ".join(f"{ir}:{wt:.6f}" for ir, wt in items)
 
 
-def print_sym_info_(weights_by_irrep: dict[str, float], groupname: str) -> str:
-    """Print symmetry decomposition in the legacy format used by `print_sym_info`."""
+def _legacy_symmetry_report(weights_by_irrep: dict[str, float], groupname: str) -> tuple[str, str]:
+    """Return `(report_text, dominant_irrep)` in the legacy ze.py print format."""
     from pyscf import symm as pyscf_symm
 
     weights = {
@@ -180,13 +180,31 @@ def print_sym_info_(weights_by_irrep: dict[str, float], groupname: str) -> str:
     }
 
     total = sum(weights.values())
-    print(weights.items())
-    print("\n=== Symmetry Decomposition ===")
+    lines = [str(weights.items()), "", "=== Symmetry Decomposition ==="]
     for ir, w in sorted(weights.items(), key=lambda x: -x[1]):
-        print(ir)
-        print(f"{pyscf_symm.irrep_id2name(groupname, ir):9s} : {w/total:.4f}")
-    print(groupname)
-    dominant = max(weights, key=weights.get)
-    info = pyscf_symm.irrep_id2name(groupname, dominant)
-    print("\nDominant symmetry:", pyscf_symm.irrep_id2name(groupname, dominant))
-    return str(info)
+        lines.append(str(ir))
+        frac = (w / total) if total else 0.0
+        lines.append(f"{pyscf_symm.irrep_id2name(groupname, ir):9s} : {frac:.4f}")
+    lines.append(groupname)
+
+    if weights:
+        dominant = max(weights, key=weights.get)
+        info = str(pyscf_symm.irrep_id2name(groupname, dominant))
+    else:
+        info = "unknown"
+
+    lines.extend(["", f"Dominant symmetry: {info}"])
+    return "\n".join(lines), info
+
+
+def format_sym_info_(weights_by_irrep: dict[str, float], groupname: str) -> str:
+    """Format symmetry decomposition exactly like ze.py legacy terminal output."""
+    report, _ = _legacy_symmetry_report(weights_by_irrep, groupname)
+    return report + "\n"
+
+
+def print_sym_info_(weights_by_irrep: dict[str, float], groupname: str) -> str:
+    """Print symmetry decomposition in the legacy format used by `print_sym_info`."""
+    report, info = _legacy_symmetry_report(weights_by_irrep, groupname)
+    print(report)
+    return info

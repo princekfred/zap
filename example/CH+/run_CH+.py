@@ -257,22 +257,14 @@ def main():
                 unit=cfg["unit"],
                 point_group="C2v",
             )
-            dominant_irrep = symm.print_sym_info_(
-                symm_info["weights_by_irrep"], symm_info["groupname"]
-            )
+            symm.print_sym_info_(symm_info["weights_by_irrep"], symm_info["groupname"])
 
             if qsc_symm_file:
+                symm_report = symm.format_sym_info_(
+                    symm_info["weights_by_irrep"], symm_info["groupname"]
+                )
                 with open(qsc_symm_file, "w", encoding="utf-8") as f:
-                    f.write("point_group\tC2v\n")
-                    f.write(f"state_idx\t{target_idx}\n")
-                    f.write(f"state_energy_hartree\t{float(eig[target_idx]):.12f}\n")
-                    f.write(f"dominant_irrep\t{dominant_irrep}\n")
-                    f.write("weights_by_irrep\n")
-                    for ir, wt in sorted(
-                        symm_info["weights_by_irrep"].items(),
-                        key=lambda item: (-item[1], item[0]),
-                    ):
-                        f.write(f"{ir}\t{wt:.12f}\n")
+                    f.write(symm_report)
         except Exception as exc:
             print("Symmetry analysis skipped:", exc)
 
