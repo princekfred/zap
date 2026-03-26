@@ -346,22 +346,18 @@ def qsceom_detvec_to_r1r2(
     }
 
 
-def analyze_qsceom_eigenvector_r1r2(
+def analyze_qsceom_eigenvector_r1r2_precomputed(
     vector,
     det_list,
     *,
-    symbols,
-    geometry,
+    groupname,
+    active_orbital_irreps,
     active_electrons,
     active_orbitals,
-    charge,
-    basis,
-    unit,
-    point_group="C2v",
     amp_cutoff=1e-10,
     combine="norm",
 ):
-    """Symmetry decomposition via converted ze-style R1/R2 layout (no ze.py dependency)."""
+    """ze-style symmetry decomposition using precomputed active-space irreps."""
     try:
         import numpy as np
         from pyscf import symm as pyscf_symm
@@ -371,17 +367,7 @@ def analyze_qsceom_eigenvector_r1r2(
             "  python -m pip install numpy pyscf"
         ) from exc
 
-    groupname, active_irreps = build_active_space_irreps(
-        symbols,
-        geometry,
-        charge=charge,
-        basis=basis,
-        unit=unit,
-        active_electrons=active_electrons,
-        active_orbitals=active_orbitals,
-        point_group=point_group,
-    )
-
+    active_irreps = [_normalize_irrep_name(name) for name in active_orbital_irreps]
     conv = qsceom_detvec_to_r1r2(
         vector,
         det_list,
@@ -439,11 +425,137 @@ def analyze_qsceom_eigenvector_r1r2(
         dominant = "unknown"
 
     return {
-        "groupname": groupname,
+        "groupname": str(groupname),
         "active_orbital_irreps": active_irreps,
         "weights_by_irrep": weights,
         "dominant_irrep": dominant,
         "r_layout_counts": conv["counts"],
+    }
+
+
+def analyze_qsceom_eigenvector_r1r2(
+    vector,
+    det_list,
+    *,
+    symbols,
+    geometry,
+    active_electrons,
+    active_orbitals,
+    charge,
+    basis,
+    unit,
+    point_group="C2v",
+    amp_cutoff=1e-10,
+    combine="norm",
+):
+    """Symmetry decomposition via converted ze-style R1/R2 layout (no ze.py dependency)."""
+    groupname, active_irreps = build_active_space_irreps(
+        symbols,
+        geometry,
+        charge=charge,
+        basis=basis,
+        unit=unit,
+        active_electrons=active_electrons,
+        active_orbitals=active_orbitals,
+        point_group=point_group,
+    )
+    return analyze_qsceom_eigenvector_r1r2_precomputed(
+        vector,
+        det_list,
+        groupname=groupname,
+        active_orbital_irreps=active_irreps,
+        active_electrons=active_electrons,
+        active_orbitals=active_orbitals,
+        amp_cutoff=amp_cutoff,
+        combine=combine,
+    )
+
+
+def summarize_lowest_qsceom_roots_r1r2(
+    eigvals,
+    eigvecs,
+    det_list,
+    *,
+    symbols,
+    geometry,
+    active_electrons,
+    active_orbitals,
+    charge,
+    basis,
+    unit,
+    point_group="C2v",
+    n_roots=25,
+    amp_cutoff=1e-10,
+    combine="norm",
+):
+    """Summarize dominant irreps for the lowest-energy QSC-EOM roots (ze-style R1/R2)."""
+    try:
+        import numpy as np
+    except ModuleNotFoundError as exc:
+        raise ModuleNotFoundError(
+            "Missing dependency for symmetry analysis. Install with:\n"
+            "  python -m pip install numpy"
+        ) from exc
+
+    evals = np.asarray(eigvals)
+    evecs = np.asarray(eigvecs)
+    if evals.ndim != 1:
+        raise ValueError("eigvals must be 1D")
+    if evecs.ndim != 2:
+        raise ValueError("eigvecs must be 2D")
+    if evecs.shape[0] != len(det_list):
+        raise ValueError(
+            f"eigvecs first dimension {evecs.shape[0]} must match len(det_list)={len(det_list)}"
+        )
+    if evecs.shape[1] != evals.shape[0]:
+        raise ValueError(
+            "eigvecs second dimension must match number of eigenvalues: "
+            f"{evecs.shape[1]} vs {evals.shape[0]}"
+        )
+
+    limit = max(int(n_roots), 0)
+    n_take = min(limit, evals.shape[0], evecs.shape[1])
+    groupname, active_irreps = build_active_space_irreps(
+        symbols,
+        geometry,
+        charge=charge,
+        basis=basis,
+        unit=unit,
+        active_electrons=active_electrons,
+        active_orbitals=active_orbitals,
+        point_group=point_group,
+    )
+
+    roots = []
+    for root_idx in range(n_take):
+        info = analyze_qsceom_eigenvector_r1r2_precomputed(
+            np.asarray(evecs[:, root_idx]),
+            det_list,
+            groupname=groupname,
+            active_orbital_irreps=active_irreps,
+            active_electrons=active_electrons,
+            active_orbitals=active_orbitals,
+            amp_cutoff=amp_cutoff,
+            combine=combine,
+        )
+        energy_raw = evals[root_idx]
+        try:
+            energy = float(np.real(energy_raw))
+        except Exception:
+            energy = float(energy_raw)
+        roots.append(
+            {
+                "root_index": int(root_idx),
+                "energy": energy,
+                "dominant_irrep": str(info["dominant_irrep"]),
+                "weights_by_irrep": dict(info["weights_by_irrep"]),
+            }
+        )
+
+    return {
+        "groupname": str(groupname),
+        "active_orbital_irreps": list(active_irreps),
+        "roots": roots,
     }
 
 

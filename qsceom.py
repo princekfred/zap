@@ -87,6 +87,65 @@ def _mpi_context():
     return comm, comm.Get_size(), comm.Get_rank(), _MPI.SUM
 
 
+def _print_lowest_root_symmetry_summary(
+    eigvals,
+    eigvecs,
+    det_list,
+    *,
+    symbols,
+    geometry,
+    active_electrons,
+    active_orbitals,
+    charge,
+    basis,
+    unit,
+    point_group="C2v",
+    n_roots=25,
+):
+    try:
+        n_roots = int(n_roots)
+    except Exception:
+        n_roots = 0
+    if n_roots <= 0:
+        return
+
+    try:
+        import ze
+    except Exception as exc:
+        print("QSC-EOM symmetry post-processing skipped:", exc)
+        return
+
+    try:
+        summary = ze.summarize_lowest_qsceom_irreps(
+            eigvals,
+            eigvecs,
+            det_list,
+            symbols=symbols,
+            geometry=geometry,
+            active_electrons=active_electrons,
+            active_orbitals=active_orbitals,
+            charge=charge,
+            basis=basis,
+            unit=unit,
+            point_group=point_group,
+            n_roots=n_roots,
+        )
+    except Exception as exc:
+        print("QSC-EOM symmetry post-processing skipped:", exc)
+        return
+
+    roots = list(summary.get("roots", []))
+    if not roots:
+        return
+
+    print(f"Lowest {len(roots)} QSC-EOM roots with dominant symmetry:")
+    for entry in roots:
+        ridx = int(entry["root_index"])
+        energy = float(entry["energy"])
+        dominant = str(entry["dominant_irrep"])
+        print(f"  root[{ridx:2d}]  E = {energy:.12f} Ha  irrep = {dominant}")
+
+
 def qsc_eom(
     symbols: Sequence[str],
     coordinates,
@@ -240,6 +299,8 @@ def ee_exact(
     hamiltonian=None,
     qubits=None,
     return_vector=False,
+    symmetry_point_group="C2v",
+    symmetry_roots=25,
 ):
     """Compatibility wrapper used by existing run scripts.
 
@@ -272,6 +333,20 @@ def ee_exact(
     hf_state = np.array(range(active_electrons))
     # QSC-EOM determinant list uses spin-orbital count (2 * active_orbitals).
     det_list = inite(active_electrons, 2 * active_orbitals)
+    _print_lowest_root_symmetry_summary(
+        eigvals,
+        eigvecs,
+        det_list,
+        symbols=symbols,
+        geometry=geometry,
+        active_electrons=active_electrons,
+        active_orbitals=active_orbitals,
+        charge=charge,
+        basis=basis,
+        unit=unit,
+        point_group=symmetry_point_group,
+        n_roots=symmetry_roots,
+    )
 
     if r1r2_outfile:
         lines = ["R1/R2", "Excitations | Coefficients"]

@@ -126,50 +126,85 @@ def print_sym_info(weights,mol):
     return info
 
 
+def summarize_lowest_qsceom_irreps(
+    eigvals,
+    eigvecs,
+    det_list,
+    *,
+    symbols,
+    geometry,
+    active_electrons,
+    active_orbitals,
+    charge,
+    basis,
+    unit,
+    point_group="C2v",
+    n_roots=25,
+    amp_cutoff=1e-10,
+    combine="norm",
+):
+    """Batch ze-style symmetry post-processing for the lowest QSC-EOM roots."""
+    import symm as qsc_symm
 
-############################################
-# 0. Build molecule with symmetry
-############################################
-
-mol = gto.M(
-    atom="O 0 0 0; O 0 0 1.1",
-    basis="cc-pvdz",
-    spin=2,
-    symmetry='D2h'
-)
-
-mf = scf.RHF(mol)
-mf.kernel()
-
-##################################
-##################################
-# This info is meant to simply drive our
-# symmetry routines; can/will be omitted
-# after integration
-#################################
-mo_irreps = symm.label_orb_symm(
-    mol,
-    mol.irrep_name,
-    mol.symm_orb,
-    mf.mo_coeff
-)
-nocc = mol.nelectron // 2
-nmo = len(mo_irreps)
-nvir = nmo - nocc
-
-R1 = np.random.rand(nocc, nvir)
-R2 = np.random.rand(nocc, nocc, nvir, nvir)
-R = np.concatenate([R1.ravel(), R2.ravel()])
+    return qsc_symm.summarize_lowest_qsceom_roots_r1r2(
+        eigvals,
+        eigvecs,
+        det_list,
+        symbols=symbols,
+        geometry=geometry,
+        active_electrons=active_electrons,
+        active_orbitals=active_orbitals,
+        charge=charge,
+        basis=basis,
+        unit=unit,
+        point_group=point_group,
+        n_roots=n_roots,
+        amp_cutoff=amp_cutoff,
+        combine=combine,
+    )
 
 
+if __name__ == "__main__":
+    ############################################
+    # 0. Build molecule with symmetry
+    ############################################
 
-###########################################
-# 0a. Send ***ONE*** q-sc-EOM eigenvector to 
-#     "symmetry_driver" at a time. Returns
-#     the irrep dominating that particular 
-#     excitation
-##########################################
-irrep_test = symmetry_driver(mol,mf,R)
+    mol = gto.M(
+        atom="O 0 0 0; O 0 0 1.1",
+        basis="cc-pvdz",
+        spin=2,
+        symmetry='D2h'
+    )
 
-print("Outside logic result:", irrep_test)
+    mf = scf.RHF(mol)
+    mf.kernel()
 
+    ##################################
+    ##################################
+    # This info is meant to simply drive our
+    # symmetry routines; can/will be omitted
+    # after integration
+    #################################
+    mo_irreps = symm.label_orb_symm(
+        mol,
+        mol.irrep_name,
+        mol.symm_orb,
+        mf.mo_coeff
+    )
+    nocc = mol.nelectron // 2
+    nmo = len(mo_irreps)
+    nvir = nmo - nocc
+
+    R1 = np.random.rand(nocc, nvir)
+    R2 = np.random.rand(nocc, nocc, nvir, nvir)
+    R = np.concatenate([R1.ravel(), R2.ravel()])
+
+    ###########################################
+    # 0a. Send ***ONE*** q-sc-EOM eigenvector to
+    #     "symmetry_driver" at a time. Returns
+    #     the irrep dominating that particular
+    #     excitation
+    ##########################################
+    irrep_test = symmetry_driver(mol,mf,R)
+
+    print("Outside logic result:", irrep_test)

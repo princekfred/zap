@@ -23,6 +23,65 @@ def _format_coeff(x):
     return str(complex(xr, xi))
 
 
+def _print_lowest_root_symmetry_summary(
+    eigvals,
+    eigvecs,
+    det_list,
+    *,
+    symbols,
+    geometry,
+    active_electrons,
+    active_orbitals,
+    charge,
+    basis,
+    unit,
+    point_group="C2v",
+    n_roots=25,
+):
+    try:
+        n_roots = int(n_roots)
+    except Exception:
+        n_roots = 0
+    if n_roots <= 0:
+        return
+
+    try:
+        import ze
+    except Exception as exc:
+        print("QSC-EOM symmetry post-processing skipped:", exc)
+        return
+
+    try:
+        summary = ze.summarize_lowest_qsceom_irreps(
+            eigvals,
+            eigvecs,
+            det_list,
+            symbols=symbols,
+            geometry=geometry,
+            active_electrons=active_electrons,
+            active_orbitals=active_orbitals,
+            charge=charge,
+            basis=basis,
+            unit=unit,
+            point_group=point_group,
+            n_roots=n_roots,
+        )
+    except Exception as exc:
+        print("QSC-EOM symmetry post-processing skipped:", exc)
+        return
+
+    roots = list(summary.get("roots", []))
+    if not roots:
+        return
+
+    print(f"Lowest {len(roots)} QSC-EOM roots with dominant symmetry:")
+    for entry in roots:
+        ridx = int(entry["root_index"])
+        energy = float(entry["energy"])
+        dominant = str(entry["dominant_irrep"])
+        print(f"  root[{ridx:2d}]  E = {energy:.12f} Ha  irrep = {dominant}")
+
+
 def ee_exact(
     symbols,
     geometry,
@@ -38,6 +97,8 @@ def ee_exact(
     r1r2_outfile="out_r1_r2.txt",
     hamiltonian=None,
     qubits=None,
+    symmetry_point_group="C2v",
+    symmetry_roots=25,
 ):
     """Run exact QSC-EOM using the same exact UCCSD unitary as `vqee`."""
     try:
@@ -131,6 +192,20 @@ def ee_exact(
     idx = np.argsort(eig.real)
     eig = eig[idx].real
     evec = evec[:, idx]
+    _print_lowest_root_symmetry_summary(
+        eig,
+        evec,
+        list1,
+        symbols=symbols,
+        geometry=geometry,
+        active_electrons=active_electrons,
+        active_orbitals=active_orbitals,
+        charge=charge,
+        basis=basis,
+        unit=unit,
+        point_group=symmetry_point_group,
+        n_roots=symmetry_roots,
+    )
 
     if state_idx < 0 or state_idx >= len(eig):
         raise ValueError(
