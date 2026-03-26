@@ -214,7 +214,41 @@ def main():
             qubits=shared_qubits,
             return_eigvecs=True,
         )
-        print("QSC-EOM energies (Hartree):", eig)
+        sort_order = sorted(range(int(len(eig))), key=lambda idx: float(eig[idx]))
+        n_roots = min(25, len(sort_order), int(eigvecs.shape[1]))
+        dominant_by_root = {}
+        try:
+            root_symm = symm.summarize_lowest_qsceom_roots_r1r2(
+                eig,
+                eigvecs,
+                det_list,
+                symbols=cfg["symbols"],
+                geometry=cfg["geometry"],
+                active_electrons=cfg["active_electrons"],
+                active_orbitals=cfg["active_orbitals"],
+                charge=cfg["charge"],
+                basis=cfg["basis"],
+                unit=cfg["unit"],
+                point_group="C2v",
+                n_roots=n_roots,
+            )
+            dominant_by_root = {
+                int(entry["root_index"]): str(entry["dominant_irrep"])
+                for entry in root_symm.get("roots", [])
+            }
+        except Exception as exc:
+            print("Root-wise symmetry table skipped:", exc)
+
+        lowest25_rows = []
+        for soln_idx, root_idx in enumerate(sort_order[:n_roots]):
+            energy = float(eig[root_idx])
+            dominant = dominant_by_root.get(int(root_idx), "unknown")
+            lowest25_rows.append((soln_idx, root_idx, energy, dominant))
+
+        print("Lowest 25 eigenvalue/irrep table (ascending):")
+        print("soln_idx\teigenvalue_hartree\tdominant_irrep")
+        for soln_idx, _root_idx, energy, dominant in lowest25_rows:
+            print(f"{soln_idx}\t{energy:.12f}\t{dominant}")
 
         print("Using QSC-EOM excited state index:", target_idx)
 
@@ -226,35 +260,8 @@ def main():
 
         if r_vectors_dir is not None:
             r_vectors_dir.mkdir(parents=True, exist_ok=True)
-            sort_order = sorted(range(int(len(eig))), key=lambda idx: float(eig[idx]))
-            n_roots = min(25, len(sort_order), int(eigvecs.shape[1]))
-            dominant_by_root = {}
-            try:
-                root_symm = symm.summarize_lowest_qsceom_roots_r1r2(
-                    eig,
-                    eigvecs,
-                    det_list,
-                    symbols=cfg["symbols"],
-                    geometry=cfg["geometry"],
-                    active_electrons=cfg["active_electrons"],
-                    active_orbitals=cfg["active_orbitals"],
-                    charge=cfg["charge"],
-                    basis=cfg["basis"],
-                    unit=cfg["unit"],
-                    point_group="C2v",
-                    n_roots=n_roots,
-                )
-                dominant_by_root = {
-                    int(entry["root_index"]): str(entry["dominant_irrep"])
-                    for entry in root_symm.get("roots", [])
-                }
-            except Exception as exc:
-                print("Root-wise symmetry table skipped:", exc)
-
             eigmap_lines = ["soln_idx\teigenvalue_hartree\tdominant_irrep"]
-            print("Lowest 25 eigenvalue/irrep table (ascending):")
-            print("soln_idx\teigenvalue_hartree\tdominant_irrep")
-            for soln_idx, root_idx in enumerate(sort_order[:n_roots]):
+            for soln_idx, root_idx, energy, dominant in lowest25_rows:
                 out_path = r_vectors_dir / f"r1_r2_soln{soln_idx}"
                 _write_r1r2_like_file(
                     out_path,
@@ -262,10 +269,7 @@ def main():
                     det_list,
                     cfg["active_electrons"],
                 )
-                energy = float(eig[root_idx])
-                dominant = dominant_by_root.get(int(root_idx), "unknown")
                 eigmap_lines.append(f"{soln_idx}\t{energy:.12f}\t{dominant}")
-                print(f"{soln_idx}\t{energy:.12f}\t{dominant}")
             with open(r_vectors_dir / "eigenvalue_map.txt", "w", encoding="utf-8") as f:
                 f.write("\n".join(eigmap_lines))
                 f.write("\n")
@@ -339,8 +343,9 @@ def main():
 
         if qscex_ene_file:
             with open(qscex_ene_file, "w", encoding="utf-8") as f:
-                for value in eig:
-                    f.write(f"{float(value)}\n")
+                f.write("soln_idx\teigenvalue_hartree\tdominant_irrep\n")
+                for soln_idx, _root_idx, energy, dominant in lowest25_rows:
+                    f.write(f"{soln_idx}\t{energy:.12f}\t{dominant}\n")
 
         if casci_energies is not None and len(casci_energies) > target_idx:
             casci_gap_h = float(casci_energies[target_idx] - casci_energies[0])
@@ -349,7 +354,6 @@ def main():
                 "CASCI energy difference at the same index:",
                 f"{casci_gap_h:.12f} Hartree = {casci_gap_ev:.6f} eV",
             )
-
 
 if __name__ == "__main__":
     main()
