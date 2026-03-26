@@ -146,6 +146,29 @@ def _print_lowest_root_symmetry_summary(
         print(f"  root[{ridx:2d}]  E = {energy:.12f} Ha  irrep = {dominant}")
 
 
+def _verify_eigenpair_alignment(m_matrix, eigvals, eigvecs, n_check=25, tol=1e-6):
+    n_check = min(int(n_check), int(len(eigvals)), int(eigvecs.shape[1]))
+    if n_check <= 0:
+        return
+
+    max_residual = 0.0
+    for root_idx in range(n_check):
+        vec = eigvecs[:, root_idx]
+        residual = np.linalg.norm(m_matrix @ vec - eigvals[root_idx] * vec)
+        if residual > max_residual:
+            max_residual = float(residual)
+
+    if max_residual > float(tol):
+        raise RuntimeError(
+            "Eigenpair verification failed after sorting. "
+            f"Max residual for first {n_check} roots = {max_residual:.3e} (tol={tol:.1e})."
+        )
+    print(
+        f"Verified eigenpair alignment for lowest {n_check} roots "
+        f"(max residual {max_residual:.3e})."
+    )
+
+
 def qsc_eom(
     symbols: Sequence[str],
     coordinates,
@@ -280,7 +303,10 @@ def qsc_eom(
 
     eigvals, eigvecs = np.linalg.eigh(m_matrix)
     order = np.argsort(eigvals)
-    return eigvals[order], eigvecs[:, order]
+    eigvals = eigvals[order]
+    eigvecs = eigvecs[:, order]
+    _verify_eigenpair_alignment(m_matrix, eigvals, eigvecs, n_check=25, tol=1e-6)
+    return eigvals, eigvecs
 
 
 def ee_exact(
@@ -299,6 +325,7 @@ def ee_exact(
     hamiltonian=None,
     qubits=None,
     return_vector=False,
+    return_eigvecs=False,
     symmetry_point_group="C2v",
     symmetry_roots=25,
 ):
@@ -366,6 +393,8 @@ def ee_exact(
             f.write("\n")
 
     print("QSC-EOM eigenvalues:\n", eigvals)
+    if return_eigvecs:
+        return eigvals, eigvecs, det_list
     if return_vector:
         return eigvals, vector, det_list
     return eigvals
