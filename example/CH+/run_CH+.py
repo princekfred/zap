@@ -245,7 +245,7 @@ def main():
 
         # Symmetry decomposition of the selected QSC-EOM eigenvector R.
         try:
-            symm_info = symm.analyze_qsceom_eigenvector(
+            symm_info = symm.analyze_qsceom_eigenvector_r1r2(
                 eigvec,
                 det_list,
                 symbols=cfg["symbols"],

@@ -170,6 +170,283 @@ def format_weights(weights_by_irrep: dict[str, float]) -> str:
     return ", ".join(f"{ir}:{wt:.6f}" for ir, wt in items)
 
 
+def qsceom_detvec_to_r1r2(
+    vector,
+    det_list,
+    *,
+    active_electrons: int,
+    active_orbitals: int,
+    ncore: int = 0,
+    nocc_ze: int | None = None,
+    nmo_ze: int | None = None,
+    combine: str = "norm",
+):
+    """Convert determinant-basis QSC-EOM coefficients into ze-style ``R1/R2`` layout.
+
+    Parameters
+    ----------
+    vector
+        1D QSC-EOM eigenvector in determinant basis (same order as ``det_list``).
+    det_list
+        Determinant occupations in spin-orbital indices (for example from ``exc.inite``).
+    active_electrons, active_orbitals
+        Active-space definition used to build ``det_list``.
+    ncore
+        Number of inactive core spatial orbitals. For all-electron active spaces use ``0``.
+    nocc_ze, nmo_ze
+        Target ze-layout occupied/MO counts. Defaults to active-space layout
+        (``nocc_ze = ncore + active_electrons//2``, ``nmo_ze = nocc_ze + active_nvir``).
+    combine
+        ``"norm"`` aggregates spin-resolved determinants by root-sum-square (preserves
+        symmetry weights). ``"sum"`` aggregates coherently by plain coefficient sum.
+    """
+    try:
+        import numpy as np
+    except ModuleNotFoundError as exc:
+        raise ModuleNotFoundError(
+            "Missing dependency for R1/R2 conversion. Install with:\n"
+            "  python -m pip install numpy"
+        ) from exc
+
+    vec = np.asarray(vector)
+    if vec.ndim != 1:
+        raise ValueError("vector must be 1D")
+    if len(vec) != len(det_list):
+        raise ValueError(f"len(vector)={len(vec)} does not match len(det_list)={len(det_list)}")
+
+    nele = int(active_electrons)
+    norb = int(active_orbitals)
+    if nele <= 0 or norb <= 0:
+        raise ValueError("active_electrons and active_orbitals must be positive")
+    if nele % 2 != 0:
+        raise ValueError("ze-style R1/R2 layout requires an even active_electrons count.")
+
+    nocc_active = nele // 2
+    nvir_active = norb - nocc_active
+    if nvir_active <= 0:
+        raise ValueError("active_orbitals must be greater than active_electrons//2.")
+
+    ncore = int(ncore)
+    if ncore < 0:
+        raise ValueError("ncore must be >= 0")
+
+    if nocc_ze is None:
+        nocc_ze = ncore + nocc_active
+    if nmo_ze is None:
+        nmo_ze = int(nocc_ze) + nvir_active
+
+    nocc_ze = int(nocc_ze)
+    nmo_ze = int(nmo_ze)
+    nvir_ze = nmo_ze - nocc_ze
+
+    if nocc_ze < ncore + nocc_active:
+        raise ValueError(
+            "nocc_ze is too small for the requested active-space embedding: "
+            f"need >= {ncore + nocc_active}, got {nocc_ze}."
+        )
+    if nvir_ze < nvir_active:
+        raise ValueError(
+            "nmo_ze - nocc_ze is too small for active virtual orbitals: "
+            f"need >= {nvir_active}, got {nvir_ze}."
+        )
+
+    mode = str(combine).strip().lower()
+    if mode not in {"norm", "sum"}:
+        raise ValueError("combine must be 'norm' or 'sum'")
+
+    if mode == "norm":
+        r1_acc = np.zeros((nocc_ze, nvir_ze), dtype=float)
+        r2_acc = np.zeros((nocc_ze, nocc_ze, nvir_ze, nvir_ze), dtype=float)
+    else:
+        r1_acc = np.zeros((nocc_ze, nvir_ze), dtype=complex)
+        r2_acc = np.zeros((nocc_ze, nocc_ze, nvir_ze, nvir_ze), dtype=complex)
+
+    hf_occ = list(range(nele))
+    hf_set = set(hf_occ)
+    singles = 0
+    doubles = 0
+    skipped = 0
+
+    for coeff, det in zip(vec, det_list):
+        det_int = [int(x) for x in det]
+        det_set = set(det_int)
+        holes = [h for h in hf_occ if h not in det_set]
+        particles = sorted(p for p in det_int if p not in hf_set)
+        rank = len(holes)
+
+        if rank == 1 and len(particles) == 1:
+            i_active = int(holes[0]) // 2
+            a_active = int(particles[0]) // 2 - nocc_active
+            i = ncore + i_active
+            a = a_active
+            if i < 0 or i >= nocc_ze or a < 0 or a >= nvir_ze:
+                raise ValueError(
+                    f"Mapped single index out of bounds for ze layout: i={i}, a={a}, "
+                    f"shape=({nocc_ze}, {nvir_ze})."
+                )
+            if mode == "norm":
+                r1_acc[i, a] += float(abs(coeff) ** 2)
+            else:
+                r1_acc[i, a] += coeff
+            singles += 1
+            continue
+
+        if rank == 2 and len(particles) == 2:
+            holes = sorted(int(h) for h in holes)
+            i_active = holes[0] // 2
+            j_active = holes[1] // 2
+            a_active = int(particles[0]) // 2 - nocc_active
+            b_active = int(particles[1]) // 2 - nocc_active
+            i = ncore + i_active
+            j = ncore + j_active
+            a = a_active
+            b = b_active
+            if (
+                i < 0
+                or i >= nocc_ze
+                or j < 0
+                or j >= nocc_ze
+                or a < 0
+                or a >= nvir_ze
+                or b < 0
+                or b >= nvir_ze
+            ):
+                raise ValueError(
+                    "Mapped double index out of bounds for ze layout: "
+                    f"(i,j,a,b)=({i},{j},{a},{b}), "
+                    f"shape=({nocc_ze}, {nocc_ze}, {nvir_ze}, {nvir_ze})."
+                )
+            if mode == "norm":
+                r2_acc[i, j, a, b] += float(abs(coeff) ** 2)
+            else:
+                r2_acc[i, j, a, b] += coeff
+            doubles += 1
+            continue
+
+        skipped += 1
+
+    if mode == "norm":
+        r1 = np.sqrt(r1_acc)
+        r2 = np.sqrt(r2_acc)
+    else:
+        r1 = r1_acc
+        r2 = r2_acc
+
+    packed = np.concatenate([r1.ravel(), r2.ravel()])
+    return {
+        "R": packed,
+        "R1": r1,
+        "R2": r2,
+        "nocc": nocc_ze,
+        "nvir": nvir_ze,
+        "nmo": nmo_ze,
+        "ncore": ncore,
+        "combine": mode,
+        "counts": {"singles": singles, "doubles": doubles, "skipped": skipped},
+    }
+
+
+def analyze_qsceom_eigenvector_r1r2(
+    vector,
+    det_list,
+    *,
+    symbols,
+    geometry,
+    active_electrons,
+    active_orbitals,
+    charge,
+    basis,
+    unit,
+    point_group="C2v",
+    amp_cutoff=1e-10,
+    combine="norm",
+):
+    """Symmetry decomposition via converted ze-style R1/R2 layout (no ze.py dependency)."""
+    try:
+        import numpy as np
+        from pyscf import symm as pyscf_symm
+    except ModuleNotFoundError as exc:
+        raise ModuleNotFoundError(
+            "Missing dependency for symmetry analysis. Install with:\n"
+            "  python -m pip install numpy pyscf"
+        ) from exc
+
+    groupname, active_irreps = build_active_space_irreps(
+        symbols,
+        geometry,
+        charge=charge,
+        basis=basis,
+        unit=unit,
+        active_electrons=active_electrons,
+        active_orbitals=active_orbitals,
+        point_group=point_group,
+    )
+
+    conv = qsceom_detvec_to_r1r2(
+        vector,
+        det_list,
+        active_electrons=active_electrons,
+        active_orbitals=active_orbitals,
+        ncore=0,
+        nocc_ze=active_electrons // 2,
+        nmo_ze=active_orbitals,
+        combine=combine,
+    )
+
+    nocc = int(conv["nocc"])
+    nvir = int(conv["nvir"])
+    r1 = np.asarray(conv["R1"])
+    r2 = np.asarray(conv["R2"])
+
+    weights = {}
+    total = 0.0
+
+    for i in range(nocc):
+        for a in range(nvir):
+            amp = r1[i, a]
+            if abs(amp) < float(amp_cutoff):
+                continue
+            ir_i = pyscf_symm.irrep_name2id(groupname, active_irreps[i])
+            ir_a = pyscf_symm.irrep_name2id(groupname, active_irreps[nocc + a])
+            ir_name = str(pyscf_symm.irrep_id2name(groupname, int(ir_a) ^ int(ir_i)))
+            w = float(abs(amp) ** 2)
+            weights[ir_name] = weights.get(ir_name, 0.0) + w
+            total += w
+
+    for i in range(nocc):
+        for j in range(nocc):
+            for a in range(nvir):
+                for b in range(nvir):
+                    amp = r2[i, j, a, b]
+                    if abs(amp) < float(amp_cutoff):
+                        continue
+                    ir = (
+                        int(pyscf_symm.irrep_name2id(groupname, active_irreps[nocc + a]))
+                        ^ int(pyscf_symm.irrep_name2id(groupname, active_irreps[nocc + b]))
+                        ^ int(pyscf_symm.irrep_name2id(groupname, active_irreps[i]))
+                        ^ int(pyscf_symm.irrep_name2id(groupname, active_irreps[j]))
+                    )
+                    ir_name = str(pyscf_symm.irrep_id2name(groupname, ir))
+                    w = float(abs(amp) ** 2)
+                    weights[ir_name] = weights.get(ir_name, 0.0) + w
+                    total += w
+
+    if total > 0.0:
+        for ir in list(weights.keys()):
+            weights[ir] = weights[ir] / total
+        dominant = max(weights, key=weights.get)
+    else:
+        dominant = "unknown"
+
+    return {
+        "groupname": groupname,
+        "active_orbital_irreps": active_irreps,
+        "weights_by_irrep": weights,
+        "dominant_irrep": dominant,
+        "r_layout_counts": conv["counts"],
+    }
+
+
 def _legacy_symmetry_report(weights_by_irrep: dict[str, float], groupname: str) -> tuple[str, str]:
     """Return `(report_text, dominant_irrep)` in the legacy ze.py print format."""
     from pyscf import symm as pyscf_symm
