@@ -10,6 +10,7 @@ if str(PROJECT_ROOT) not in sys.path:
 import SCF
 import casci
 import qsceom_exact
+import symm
 import vqee
 
 OUTPUT_DIR = PROJECT_ROOT / "outputs" /"CH+2re"/ "CH+ Full operator"
@@ -218,12 +219,32 @@ def _parse_args():
     return parser.parse_args()
 
 
+def _write_r1r2_like_file(path, vector, det_list, active_electrons):
+    hf_state = list(range(int(active_electrons)))
+    lines = ["R1/R2", "Excitations | Coefficients"]
+    for det_idx, coeff in enumerate(vector):
+        det = det_list[det_idx]
+        holes = [hf for hf in hf_state if hf not in det]
+        particles = [virt for virt in det if virt not in hf_state]
+        labels = [f"{p}^ {h}" for p, h in zip(particles, holes)]
+        label = "; ".join(labels) if labels else "reference"
+        try:
+            cval = coeff.item()
+        except Exception:
+            cval = coeff
+        lines.append(f"{label}\t| {cval}")
+
+    with open(path, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines))
+        f.write("\n")
+
+
 def main():
     args = _parse_args()
     cfg = _default_problem()
 
     run_scf = args.mode in {"all", "scf"}
-    run_vqe = args.mode in {"all", "vqee", "qsceom"}
+    run_vqe = args.mode in {"all", "vqe", "qsceom"}
     run_qsceom = args.mode in {"all", "qsceom"}
     target_idx = None if args.state_idx is None else int(args.state_idx)
 
@@ -234,8 +255,10 @@ def main():
     two_e_file = None if args.skip_files else str(OUTPUT_DIR / "two_elec.txt")
     amp_file = None if args.skip_files else str(OUTPUT_DIR / "t1_t2.txt")
     r1r2_file = None if args.skip_files else str(OUTPUT_DIR / "r1_r2.txt")
+    r_vectors_dir = None if args.skip_files else (OUTPUT_DIR / "r_vectors")
     qscex_ene_file = None if args.skip_files else str(OUTPUT_DIR / "qsceom_energy")
     casci_file = None if args.skip_files else str(OUTPUT_DIR / "CASCI_output.txt")
+    qsc_symm_file = None if args.skip_files else str(OUTPUT_DIR / "qsceom_symmetry.txt")
     gap_file = None if args.skip_files else str(OUTPUT_DIR / "energy_gap_2_1Delta.txt")
     label_file = None if args.skip_files else str(OUTPUT_DIR / "state_labels_c2v.txt")
 
@@ -338,11 +361,10 @@ def main():
             raise RuntimeError("QSC-EOM requested without optimized parameters.")
 
         # First pass to collect eigenvalues. In auto-target mode, do not write R1/R2
-        # until the 2^1Delta root is resolved.
+        # until the target root is resolved.
         first_idx = 0 if target_idx is None else target_idx
-        first_r1r2_file = None if target_idx is None else r1r2_file
         print("\n[3/3] Running QSC-EOM...")
-        eig = qsceom_exact.ee_exact(
+        eig, eigvecs, det_list = qsceom_exact.ee_exact(
             cfg["symbols"],
             cfg["geometry"],
             cfg["active_electrons"],
@@ -354,9 +376,10 @@ def main():
             basis=cfg["basis"],
             unit=cfg["unit"],
             state_idx=first_idx,
-            r1r2_outfile=first_r1r2_file,
+            r1r2_outfile=None,
             hamiltonian=shared_hamiltonian,
             qubits=shared_qubits,
+            return_eigvecs=True,
         )
         print("QSC-EOM energies (Hartree):", eig)
 
@@ -376,31 +399,74 @@ def main():
                 f"(A1 root {target_pair['a1_root_index']} + A2 root {target_pair['a2_root_index']})",
             )
 
-        # Ensure QSC-EOM is explicitly run with the resolved target state.
-        if target_idx != first_idx:
-            eig = qsceom_exact.ee_exact(
-                cfg["symbols"],
-                cfg["geometry"],
-                cfg["active_electrons"],
-                cfg["active_orbitals"],
-                cfg["charge"],
-                params,
-                shots=args.shots,
-                method=args.method,
-                basis=cfg["basis"],
-                unit=cfg["unit"],
-                state_idx=target_idx,
-                r1r2_outfile=r1r2_file,
-                hamiltonian=shared_hamiltonian,
-                qubits=shared_qubits,
-            )
-
         print("Using QSC-EOM excited state index:", target_idx)
 
         if target_idx < 0 or target_idx >= len(eig):
             raise ValueError(
                 f"Resolved target state index {target_idx} is out of range 0..{len(eig)-1}."
             )
+        eigvec = eigvecs[:, target_idx]
+
+        if r1r2_file:
+            _write_r1r2_like_file(
+                r1r2_file,
+                eigvec,
+                det_list,
+                cfg["active_electrons"],
+            )
+
+        sort_order = sorted(range(int(len(eig))), key=lambda idx: float(eig[idx]))
+        n_roots = min(25, len(sort_order), int(eigvecs.shape[1]))
+        dominant_by_root = {}
+        try:
+            root_symm = symm.summarize_lowest_qsceom_roots_r1r2(
+                eig,
+                eigvecs,
+                det_list,
+                symbols=cfg["symbols"],
+                geometry=cfg["geometry"],
+                active_electrons=cfg["active_electrons"],
+                active_orbitals=cfg["active_orbitals"],
+                charge=cfg["charge"],
+                basis=cfg["basis"],
+                unit=cfg["unit"],
+                point_group="C2v",
+                n_roots=n_roots,
+            )
+            dominant_by_root = {
+                int(entry["root_index"]): str(entry["dominant_irrep"])
+                for entry in root_symm.get("roots", [])
+            }
+        except Exception as exc:
+            print("Root-wise symmetry table skipped:", exc)
+
+        lowest25_rows = []
+        for soln_idx, root_idx in enumerate(sort_order[:n_roots]):
+            energy = float(eig[root_idx])
+            dominant = dominant_by_root.get(int(root_idx), "unknown")
+            lowest25_rows.append((soln_idx, root_idx, energy, dominant))
+
+        print("Lowest 25 eigenvalue/irrep table (ascending):")
+        print("soln_idx\teigenvalue_hartree\tdominant_irrep")
+        for soln_idx, _root_idx, energy, dominant in lowest25_rows:
+            print(f"{soln_idx}\t{energy:.12f}\t{dominant}")
+
+        if r_vectors_dir is not None:
+            r_vectors_dir.mkdir(parents=True, exist_ok=True)
+            eigmap_lines = ["soln_idx\teigenvalue_hartree\tdominant_irrep"]
+            for soln_idx, root_idx, energy, dominant in lowest25_rows:
+                out_path = r_vectors_dir / f"r1_r2_soln{soln_idx}"
+                _write_r1r2_like_file(
+                    out_path,
+                    eigvecs[:, root_idx],
+                    det_list,
+                    cfg["active_electrons"],
+                )
+                eigmap_lines.append(f"{soln_idx}\t{energy:.12f}\t{dominant}")
+            with open(r_vectors_dir / "eigenvalue_map.txt", "w", encoding="utf-8") as f:
+                f.write("\n".join(eigmap_lines))
+                f.write("\n")
+            print(f"Wrote {n_roots} R-vector files to: {r_vectors_dir}")
 
         ground_energy = float(eig[0])
         excited_energy = float(eig[target_idx])
@@ -454,10 +520,36 @@ def main():
                 f"{err_ev:.6f} eV",
             )
 
+        # Symmetry decomposition of the selected QSC-EOM eigenvector R.
+        try:
+            symm_info = symm.analyze_qsceom_eigenvector_r1r2(
+                eigvec,
+                det_list,
+                symbols=cfg["symbols"],
+                geometry=cfg["geometry"],
+                active_electrons=cfg["active_electrons"],
+                active_orbitals=cfg["active_orbitals"],
+                charge=cfg["charge"],
+                basis=cfg["basis"],
+                unit=cfg["unit"],
+                point_group="C2v",
+            )
+            symm.print_sym_info_(symm_info["weights_by_irrep"], symm_info["groupname"])
+
+            if qsc_symm_file:
+                symm_report = symm.format_sym_info_(
+                    symm_info["weights_by_irrep"], symm_info["groupname"]
+                )
+                with open(qsc_symm_file, "w", encoding="utf-8") as f:
+                    f.write(symm_report)
+        except Exception as exc:
+            print("Symmetry analysis skipped:", exc)
+
         if qscex_ene_file:
             with open(qscex_ene_file, "w", encoding="utf-8") as f:
-                for value in eig:
-                    f.write(f"{float(value)}\n")
+                f.write("soln_idx\teigenvalue_hartree\tdominant_irrep\n")
+                for soln_idx, _root_idx, energy, dominant in lowest25_rows:
+                    f.write(f"{soln_idx}\t{energy:.12f}\t{dominant}\n")
 
         if gap_file:
             with open(gap_file, "w", encoding="utf-8") as f:
@@ -475,7 +567,6 @@ def main():
                     f.write(f"reference_excited_energy_hartree\t{excited_ref:.12f}\n")
                     f.write(f"excited_state_error_hartree\t{excited_err_h:.12f}\n")
                     f.write(f"excited_state_error_eV\t{excited_err_ev:.8f}\n")
-               
 
         if casci_energies is not None and len(casci_energies) > target_idx:
             casci_gap_h = float(casci_energies[target_idx] - casci_energies[0])

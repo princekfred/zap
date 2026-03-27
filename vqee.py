@@ -102,23 +102,6 @@ def _canon_pair(p, q):
     return p, q, sign
 
 
-def _double_print_key(ex):
-    i, j, a, b = ex
-    a2, b2, _ = _canon_pair(a, b)
-    i2, j2, _ = _canon_pair(i, j)
-    mixed_spin = (i % 2) != (j % 2)
-    if mixed_spin:
-        category = 0
-    else:
-        category = 1 if (i % 2) == 0 else 2
-    return (category, a2 // 2, b2 // 2, i2 // 2, j2 // 2, a2, b2, i2, j2)
-
-
-def _single_print_key(ex):
-    i, a = ex
-    return (i // 2, a // 2, i % 2, a, i)
-
-
 def _print_amplitudes(
     *,
     singles,
@@ -141,20 +124,15 @@ def _print_amplitudes(
     t1 = np.asarray(params[:n_s], dtype=float)
     t2 = np.asarray(params[n_s:], dtype=float)
 
-    t1_map = {tuple(ex): float(val) for ex, val in zip(singles, t1)}
-    t2_map = {tuple(ex): float(val) for ex, val in zip(doubles, t2)}
-
     lines = []
-    for i, j, a, b in sorted(doubles, key=_double_print_key):
+    for (i, j, a, b), amp in zip(doubles, t2):
         a2, b2, s_ab = _canon_pair(a, b)
         i2, j2, s_ij = _canon_pair(i, j)
-        amp = t2_map[(i, j, a, b)]
         line = f"{a2}^ {b2}^ {i2} {j2} \t| {s_ab * s_ij * amp}"
         lines.append(line)
         print(line)
 
-    for i, a in sorted(singles, key=_single_print_key):
-        amp = t1_map[(i, a)]
+    for (i, a), amp in zip(singles, t1):
         line = f"{a}^ {i} \t| {amp}"
         lines.append(line)
         print(line)
@@ -168,7 +146,7 @@ def _print_amplitudes(
             if hf_energy is not None:
                 f.write(f"HF energy: {float(hf_energy)}\n")
             if energy_min is not None:
-                f.write(f"Energy minimum: {float(energy_min)}\n")
+                f.write(f"UCCSD energy: {float(energy_min)}\n")
             if (
                 active_electrons is not None
                 or active_orbitals is not None
@@ -315,7 +293,7 @@ def gs_exact(
         print("Message:", res.message)
 
     print("\nOptimal parameters:\n", list(params))
-    print("USSCD energy = ", energy)
+    print("UCCSD energy = ", energy)
 
     _print_amplitudes(
         singles=singles,

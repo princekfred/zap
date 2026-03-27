@@ -120,6 +120,8 @@ def ee_exact(
     r1r2_outfile="out_r1_r2.txt",
     hamiltonian=None,
     qubits=None,
+    return_vector=False,
+    return_eigvecs=False,
     symmetry_point_group="C2v",
     symmetry_roots=25,
 ):
@@ -237,9 +239,6 @@ def ee_exact(
         )
 
     vector = evec[:, state_idx]
-    pivot = int(np.argmax(np.abs(vector)))
-    if abs(vector[pivot]) > 0:
-        vector = vector / (vector[pivot] / abs(vector[pivot]))
 
     hf_state = list(range(active_electrons))
     if r1r2_outfile:
@@ -255,5 +254,9 @@ def ee_exact(
             f.write("\n".join(lines))
             f.write("\n")
 
-    print("QSC-EOM exact eigenvalues:\n", eig)
+    print("QSC-EOM eigenvalues:\n", eig)
+    if return_eigvecs:
+        return eig, evec, list1
+    if return_vector:
+        return eig, vector, list1
     return eig
