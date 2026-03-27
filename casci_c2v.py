@@ -117,6 +117,7 @@ def build_casci_hamiltonian(
         header = (
             "point_group C2v\n"
             f"converged_scf_energy_hartree {float(mf.e_tot):.12f}\n"
+            "note first listed CASCI value is the ground_state_energy_hartree\n"
             "casci_excited_state_energies_hartree"
         )
         np.savetxt(out_path, excited, fmt="%.12f", header=header, comments="# ")

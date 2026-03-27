@@ -106,6 +106,7 @@ def build_casci_hamiltonian(
         out_path.parent.mkdir(parents=True, exist_ok=True)
         header = (
             f"converged_scf_energy_hartree {float(mf.e_tot):.12f}\n"
+            "note first listed CASCI value is the ground_state_energy_hartree\n"
             "casci_state_energies_hartree"
         )
         np.savetxt(out_path, energies, fmt="%.12f", header=header, comments="# ")

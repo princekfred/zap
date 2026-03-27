@@ -133,7 +133,6 @@ def main():
     r_vectors_dir = None if args.skip_files else (OUTPUT_DIR / "r_vectors")
     qscex_ene_file = None if args.skip_files else str(OUTPUT_DIR / "qsceom_energy")
     casci_file = None if args.skip_files else str(OUTPUT_DIR / "CASCI_output.txt")
-    qsc_symm_file = None if args.skip_files else str(OUTPUT_DIR / "qsceom_symmetry.txt")
     if run_scf:
         print("\n[1/3] Running SCF...")
         scf_result = SCF.run_scf(
@@ -326,13 +325,6 @@ def main():
                 point_group="C2v",
             )
             symm.print_sym_info_(symm_info["weights_by_irrep"], symm_info["groupname"])
-
-            if qsc_symm_file:
-                symm_report = symm.format_sym_info_(
-                    symm_info["weights_by_irrep"], symm_info["groupname"]
-                )
-                with open(qsc_symm_file, "w", encoding="utf-8") as f:
-                    f.write(symm_report)
         except Exception as exc:
             print("Symmetry analysis skipped:", exc)
 

@@ -13,7 +13,7 @@ import qsceom_exact
 import symm
 import vqee
 
-OUTPUT_DIR = PROJECT_ROOT / "outputs" /"CH+2re"/ "CH+ Full operator"
+OUTPUT_DIR = PROJECT_ROOT / "outputs" /"CH+1.5re"/ "CH+ Full operator"
 HARTREE_TO_EV = 27.211386245988
 
 
@@ -38,7 +38,7 @@ def _default_problem():
     symbols = ["C", "H"]
     coords = [
         [0.0, 0.0, 0.0],
-        [0.0, 0.0, 2*re],
+        [0.0, 0.0, 1.5*re],
     ]
     return {
         "symbols": symbols,
