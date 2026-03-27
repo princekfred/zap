@@ -453,7 +453,6 @@ def main():
 
         if r_vectors_dir is not None:
             r_vectors_dir.mkdir(parents=True, exist_ok=True)
-            eigmap_lines = ["soln_idx\teigenvalue_hartree\tdominant_irrep"]
             for soln_idx, root_idx, energy, dominant in lowest25_rows:
                 out_path = r_vectors_dir / f"r1_r2_soln{soln_idx}"
                 _write_r1r2_like_file(
@@ -462,10 +461,6 @@ def main():
                     det_list,
                     cfg["active_electrons"],
                 )
-                eigmap_lines.append(f"{soln_idx}\t{energy:.12f}\t{dominant}")
-            with open(r_vectors_dir / "eigenvalue_map.txt", "w", encoding="utf-8") as f:
-                f.write("\n".join(eigmap_lines))
-                f.write("\n")
             print(f"Wrote {n_roots} R-vector files to: {r_vectors_dir}")
 
         ground_energy = float(eig[0])
