@@ -1,4 +1,5 @@
 # converged_scf_energy_hartree -37.726907678846
+# note first listed CASCI value is the ground_state_energy_hartree
 # casci_state_energies_hartree
 -37.820655585356
 -37.790590055298

@@ -27,6 +27,13 @@ def gs_exact(
             "Missing dependency 'pennylane'. Install with:\n"
             "  python -m pip install pennylane pennylane-lightning pyscf"
         ) from exc
+    try:
+        from scipy.optimize import minimize
+    except ModuleNotFoundError as exc:
+        raise ModuleNotFoundError(
+            "Missing dependency 'scipy'. Install with:\n"
+            "  python -m pip install scipy"
+        ) from exc
 
     if hamiltonian is None:
         raise ValueError(
@@ -74,7 +81,7 @@ def gs_exact(
     # Device
     dev = make_device(shots_=shots)
 
-    @qml.qnode(dev, interface="autograd", diff_method="best")
+    @qml.qnode(dev)
     def circuit(params, wires, s_wires, d_wires, hf_state):
         qml.UCCSD(params, wires, s_wires, d_wires, hf_state)
         return qml.expval(H)
@@ -82,19 +89,44 @@ def gs_exact(
     if max_iter < 1:
         raise ValueError("`max_iter` must be >= 1")
 
-    optimizer = qml.GradientDescentOptimizer(stepsize=0.1)
-    #for _ in range(max_iter):
-    for step in range(1, int(max_iter) + 1):
-        params, energy = optimizer.step_and_cost(
-            circuit,
-            params,
+    def objective(x):
+        x = np.asarray(x, dtype=float)
+        value = circuit(
+            x,
             wires=range(qubits),
             s_wires=s_wires,
             d_wires=d_wires,
             hf_state=hf_state,
         )
-        if step % 10 == 0:
-            print(f"VQE iter {step}: energy = {float(energy):.12f}")
+        return float(value)
+
+    step_counter = {"n": 0}
+
+    def callback(xk):
+        step_counter["n"] += 1
+        if step_counter["n"] % 10 == 0:
+            e = objective(xk)
+            print(f"VQE iter {step_counter['n']}: energy = {float(e):.12f}")
+
+    if int(params.size) == 0:
+        energy = float(hf_e)
+        print("Optimizer:", "BFGS", "| success:", True)
+        print("Message:", "No variational parameters; returning HF state energy.")
+    else:
+        result = minimize(
+            objective,
+            np.asarray(params, dtype=float),
+            method="BFGS",
+            tol=1e-8,
+            callback=callback,
+            options={"maxiter": int(max_iter), "gtol": 1e-8},
+        )
+
+        params = np.asarray(result.x, dtype=float)
+        energy = float(result.fun)
+        print("Optimizer:", "BFGS", "| success:", bool(getattr(result, "success", False)))
+        if hasattr(result, "message"):
+            print("Message:", result.message)
 
     print("\nOptimal parameters:\n", list(params))
     print("UCCSD energy = ", energy)

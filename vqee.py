@@ -102,6 +102,23 @@ def _canon_pair(p, q):
     return p, q, sign
 
 
+def _normalize_opt_method_name(opt_method):
+    """Normalize requested optimization method names to BFGS."""
+    name = str(opt_method).strip()
+    token = name.upper().replace("-", "").replace("_", "").replace(" ", "")
+    aliases = {
+        "BFGS": "BFGS",
+        "LBGS": "BFGS",
+        "LBFGS": "BFGS",
+        "LBFGSB": "BFGS",
+        "LBGFS": "BFGS",
+        "GRADIENTDESCENT": "BFGS",
+        "GD": "BFGS",
+        "GRADIENT": "BFGS",
+    }
+    return aliases.get(token, "BFGS")
+
+
 def _print_amplitudes(
     *,
     singles,
@@ -168,7 +185,7 @@ def gs_exact(
     charge,
     shots=None,
     max_iter=500,
-    opt_method="Powell",
+    opt_method="BFGS",
     method="pyscf",
     basis=None,
     unit=None,
@@ -213,6 +230,8 @@ def gs_exact(
         )
     if basis is None or unit is None:
         raise ValueError("`basis` and `unit` must be provided by the caller.")
+    if max_iter < 1:
+        raise ValueError("`max_iter` must be >= 1")
 
     H = hamiltonian
     if qubits is None:
@@ -281,16 +300,33 @@ def gs_exact(
         print("Note: `shots` ignored (statevector expectation value).")
 
     t0 = time.time()
-    res = minimize(energy, x0, method=opt_method, options={"maxiter": int(max_iter)})
+    _normalize_opt_method_name(opt_method)
+    method = "BFGS"
+
+    if int(x0.size) == 0:
+        params = np.asarray(x0, dtype=float)
+        energy = float(hf_e)
+        success = True
+        message = "No variational parameters; returning HF state energy."
+    else:
+        res = minimize(
+            energy,
+            x0,
+            method=method,
+            tol=1e-8,
+            options={"maxiter": int(max_iter), "gtol": 1e-8},
+        )
+        params = np.asarray(res.x, dtype=float)
+        energy = float(res.fun)
+        success = bool(getattr(res, "success", False))
+        message = str(getattr(res, "message", ""))
+
     elapsed = time.time() - t0
 
-    params = res.x
-    energy = res.fun
-
     print(f"Optimization time: {elapsed:.2f}s")
-    print("Optimizer:", opt_method, "| success:", bool(getattr(res, "success", False)))
-    if hasattr(res, "message"):
-        print("Message:", res.message)
+    print("Optimizer:", method, "| success:", success)
+    if message:
+        print("Message:", message)
 
     print("\nOptimal parameters:\n", list(params))
     print("UCCSD energy = ", energy)
