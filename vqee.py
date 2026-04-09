@@ -103,7 +103,7 @@ def _canon_pair(p, q):
 
 
 def _normalize_opt_method_name(opt_method):
-    """Normalize requested optimization method names to BFGS."""
+    """Normalize common optimizer aliases to scipy names."""
     name = str(opt_method).strip()
     token = name.upper().replace("-", "").replace("_", "").replace(" ", "")
     aliases = {
@@ -116,7 +116,25 @@ def _normalize_opt_method_name(opt_method):
         "GD": "BFGS",
         "GRADIENT": "BFGS",
     }
-    return aliases.get(token, "BFGS")
+    return aliases.get(token, name)
+
+
+def _single_spatial_pair_key(single_excitation):
+    """Key single excitations by (hole_spatial, particle_spatial) indices."""
+    i, a = single_excitation
+    return int(i) // 2, int(a) // 2
+
+
+def _build_spin_paired_single_map(singles):
+    """Map each single-excitation index to a shared spin-paired parameter index."""
+    single_to_free = {}
+    ordered_keys = []
+    for single in singles:
+        key = _single_spatial_pair_key(single)
+        if key not in single_to_free:
+            single_to_free[key] = len(ordered_keys)
+            ordered_keys.append(key)
+    return [single_to_free[_single_spatial_pair_key(single)] for single in singles], ordered_keys
 
 
 def _print_amplitudes(
@@ -192,11 +210,16 @@ def gs_exact(
     amplitudes_outfile=None,
     hamiltonian=None,
     qubits=None,
+    enforce_spin_paired_t1=True,
 ):
     """Optimize a non‑Trotterized UCCSD ansatz using dense matrices.
 
     Returns the optimized parameter vector in PennyLane excitation ordering:
     singles first, then doubles.
+
+    When ``enforce_spin_paired_t1=True``, single excitations that differ only by
+    alpha/beta spin channel (for example ``6^ 0`` and ``7^ 1``) share one
+    variational parameter exactly.
     """
     import time
 
@@ -271,15 +294,42 @@ def gs_exact(
     )
 
     # Build anti-Hermitian generators K_k so U(params)=exp(sum_k params[k] * K_k).
-    k_mats = []
+    k_single = []
     for (i, a) in singles:
-        k_mats.append(adag_ops[a] @ a_ops[i] - adag_ops[i] @ a_ops[a])
+        k_single.append(adag_ops[a] @ a_ops[i] - adag_ops[i] @ a_ops[a])
+    k_double = []
     for (i, j, a, b) in doubles:
         t = adag_ops[a] @ adag_ops[b] @ a_ops[j] @ a_ops[i]
-        k_mats.append(t - t.conj().T)
+        k_double.append(t - t.conj().T)
 
-    k_stack = np.stack(k_mats, axis=0)
-    x0 = np.zeros(k_stack.shape[0], dtype=float)
+    if enforce_spin_paired_t1 and len(k_single) > 0:
+        single_to_free, ordered_single_keys = _build_spin_paired_single_map(singles)
+        n_single_free = len(ordered_single_keys)
+        k_single_tied = [np.zeros((dim, dim), dtype=complex) for _ in range(n_single_free)]
+        for single_idx, free_idx in enumerate(single_to_free):
+            k_single_tied[free_idx] = k_single_tied[free_idx] + k_single[single_idx]
+        k_single_stack = np.stack(k_single_tied, axis=0)
+        print(
+            "Enforcing spin-paired T1 amplitudes:",
+            f"{len(k_single)} -> {n_single_free} independent singles.",
+        )
+    else:
+        n_single_free = len(k_single)
+        single_to_free = list(range(n_single_free))
+        k_single_stack = (
+            np.stack(k_single, axis=0)
+            if len(k_single) > 0
+            else np.zeros((0, dim, dim), dtype=complex)
+        )
+
+    k_double_stack = (
+        np.stack(k_double, axis=0)
+        if len(k_double) > 0
+        else np.zeros((0, dim, dim), dtype=complex)
+    )
+
+    k_stack = np.concatenate((k_single_stack, k_double_stack), axis=0)
+    x0 = np.zeros(int(n_single_free + len(k_double)), dtype=float)
 
     try:
         from scipy.sparse.linalg import expm_multiply
@@ -300,11 +350,13 @@ def gs_exact(
         print("Note: `shots` ignored (statevector expectation value).")
 
     t0 = time.time()
-    _normalize_opt_method_name(opt_method)
+    requested_method = _normalize_opt_method_name(opt_method)
     method = "BFGS"
+    if str(requested_method).upper() != "BFGS":
+        print(f"Requested optimizer `{opt_method}` overridden to BFGS (tol=1e-8).")
 
     if int(x0.size) == 0:
-        params = np.asarray(x0, dtype=float)
+        x_opt = np.asarray(x0, dtype=float)
         energy = float(hf_e)
         success = True
         message = "No variational parameters; returning HF state energy."
@@ -316,10 +368,20 @@ def gs_exact(
             tol=1e-8,
             options={"maxiter": int(max_iter), "gtol": 1e-8},
         )
-        params = np.asarray(res.x, dtype=float)
+        x_opt = np.asarray(res.x, dtype=float)
         energy = float(res.fun)
         success = bool(getattr(res, "success", False))
         message = str(getattr(res, "message", ""))
+
+    # Expand tied optimization variables back to full singles+doubles ordering.
+    if enforce_spin_paired_t1 and len(k_single) > 0:
+        t1_full = np.zeros(len(singles), dtype=float)
+        for single_idx, free_idx in enumerate(single_to_free):
+            t1_full[single_idx] = x_opt[free_idx]
+        t2_full = np.asarray(x_opt[n_single_free:], dtype=float)
+        params = np.concatenate((t1_full, t2_full), axis=0)
+    else:
+        params = np.asarray(x_opt, dtype=float)
 
     elapsed = time.time() - t0
 
