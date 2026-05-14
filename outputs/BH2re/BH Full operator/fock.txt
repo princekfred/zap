@@ -1,0 +1,9 @@
+Basis set: 6-31g
+Geometry (bohr):
+  B  0.0000000000  0.0000000000  0.0000000000
+  H  0.0000000000  0.0000000000  4.6578000000
+
+Number of spatial orbitals: 6
+Number of occupied orbitals: 3
+Number of virtual orbitals: 3
+SCF Orbital energies in active space (Hartree): [-7.80122375 -0.5561495  -0.29014881  0.03159121  0.03159121  0.05718062]
